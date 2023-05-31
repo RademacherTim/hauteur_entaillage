@@ -44,7 +44,7 @@ A_h2 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'h2', systeme = 'A')
 
 # lire les données du système A traitement (24" en dessous) --------------------
@@ -56,7 +56,7 @@ A_b2 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'b2', systeme = 'A')
 
 # lire les données du système B contrôle (4" en dessous) -----------------------
@@ -68,7 +68,7 @@ B_b1 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'b1', systeme = 'B')
 
 # lire les données du système B traitement (24" en dessous) --------------------
@@ -80,7 +80,7 @@ B_b2 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'b2', systeme = 'B')
 
 # lire les données du système C contrôle (24" au dessus) -----------------------
@@ -92,7 +92,7 @@ C_h2 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'h2', systeme = 'C')
 
 # lire les données du système C traitement (4" au dessus) ----------------------
@@ -104,7 +104,7 @@ C_h1 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'h1', systeme = 'C')
 
 # lire les données du système E contrôle (24" au dessus) -----------------------
@@ -116,7 +116,7 @@ E_h2 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'h2', systeme = 'E')
 
 # lire les données du système E traitement 1 (4" au dessus) --------------------
@@ -128,7 +128,7 @@ E_h1 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'h1', systeme = 'E')
 
 # lire les données du système E traitement 2 (4" en dessous) -------------------
@@ -140,7 +140,7 @@ E_b1 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'b1', systeme = 'E')
 
 # lire les données du système E traitement 3 (24" en dessous) ------------------
@@ -152,12 +152,16 @@ E_b2 <- readxl::read_excel(path = '../Compilation donnée érablière - 2023.
          heure = as.numeric(substr(time, 1, 2)),
          minute = as.numeric(substr(time, 6, 7)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(date, datetime, debit, debit_cum, rendement, rendement_cum) %>%
+  select(date, datetime, debit, debit_cum, rendement, rendement_cum, brix) %>%
   add_column(h = 'b2', systeme = 'E')
 
 # combiner tous les données pertinentes ----------------------------------------
 d <- rbind(A_h2, A_b2, B_b1, B_b2, C_h2, C_h1, E_h2, E_h1, E_b1, E_b2) %>% 
-  select(date, rendement, h, systeme) %>% filter(rendement > 0)
+  select(systeme, h, date, rendement, brix) %>% filter(rendement > 0)
 
 # supprime les lignes sans date, car elles sont les moyennes -------------------
 d <- d %>% filter(!is.na(date))
+
+# nettoyer l'espace de travail -------------------------------------------------
+rm(A_b2, A_h2, B_b1, B_b2, C_h1, C_h2, E_b1, E_b2, E_h1, E_h2, column_names, 
+   column_types, systeme, traitement)
