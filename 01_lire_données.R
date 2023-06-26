@@ -285,8 +285,12 @@ tmp2 <- full_join(ph, sc, by = c('date', 'datetime', 'systeme', 'h')) %>%
   rename(ph = value.x, sc = value.y) %>%
   relocate(systeme, h, date, datetime, ph, sc)
 d1 <- full_join(tmp1, tmp2, by = c('systeme', 'h', 'date', 'datetime')) %>% 
-  mutate(h = factor(h, levels = c('h2', 'h1', 'b1', 'b2')),
-         systeme = factor(systeme, levels = c('A', 'B', 'C', 'E')))
+  mutate(t = factor(h, levels = c('h2', 'h1', 'b1', 'b2')),
+         systeme = factor(systeme, levels = c('A', 'B', 'C', 'E'))) %>% 
+  mutate(h = case_when(h == 'h2' ~  60.96, 
+                       h == 'h1' ~  10.16,
+                       h == 'b1' ~ -10.16,
+                       h == 'b2' ~ -60.96))
 
 # nettoyer l'espace de travail -------------------------------------------------
 rm(A_b2, A_h2, atp, B_b1, B_b2, brix, C_h1, C_h2, col_names_SN, col_types_SN, 

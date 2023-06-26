@@ -206,7 +206,7 @@ ranef(mod_atp)$date [, , 'Intercept']
 
 # effet de l'hauteur de l'entaille sur le pH -----------------------------------
 mod_ph <- brms::brm(brms::bf(ph | mi(ph_se) ~ 
-                               h +             # hauteur de l'entaille 
+                               t +             # hauteur de l'entaille 
                                (1 | date) +    # différence par date
                                (1 | systeme)), # difference antre systèmes
                     data = d1 %>% select(-c(brix, datetime, atp, sc)) %>% 
@@ -236,7 +236,7 @@ ranef(mod_ph)$date [, , 'Intercept']
 
 # effet de l'hauteur de l'entaille sur le pH -----------------------------------
 mod_sc <- brms::brm(brms::bf(sc ~ 
-                               h +             # hauteur de l'entaille 
+                               t +             # hauteur de l'entaille 
                                (1 | date) +    # différence par date
                                (1 | systeme)), # difference antre systèmes
                     data = d1,
@@ -256,12 +256,11 @@ pp_check(mod_sc, ndraws = 100)
 pp_check(mod_sc, type = 'error_hist',  ndraws = 10)
 pp_check(mod_sc, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement, mais 
-# Pourquoi la distribution est bi-modal. Il va falloir que je refait l'analyse 
-# une fois que les données de Mustafa ont été corrigé
+# Pourquoi la distribution est bi-modal?
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_sc)
 ranef(mod_sc)$systeme [, , 'Intercept']
 ranef(mod_sc)$date [, , 'Intercept']
 # Il semble avoir approximativement le même effet que avec le brix mesuré avec 
-# un refractomètre
+# un refractomètre.
