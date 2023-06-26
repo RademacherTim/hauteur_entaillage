@@ -50,7 +50,7 @@ legend(x = as_datetime('2023-04-14 12:00:00'), y = 12, bg = 'transparent',
 
 # L'effet de l'hauteur de l'entaille sur le rendement --------------------------
 mod_vol <- brms::brm(brms::bf(rendement ~ 
-                             h +             # hauteur de l'entaille 
+                             t +             # hauteur de l'entaille (t pour catégorique et h pour gradient)
                              (1 | date) +    # différence par date
                              (1 | systeme)), # difference antre systèmes
                       data = d,
@@ -119,7 +119,7 @@ legend(x = as_datetime('2023-04-15 12:00:00'), y = 4, bg = 'transparent',
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre ----------------------
 mod_brix1 <- brms::brm(brms::bf(brix | mi(brix1_se) ~ 
-                             h +             # hauteur de l'entaille 
+                             t +             # hauteur de l'entaille  (t pour catégorique et h pour gradient)
                              (1 | date) +    # différence par date
                              (1 | systeme)), # difference antre systèmes
                        data = d %>% add_column(brix1_se = brix1_se) %>% 
@@ -175,10 +175,10 @@ ranef(mod_brix2)$systeme [, , 'Intercept']
 ranef(mod_brix2)$date [, , 'Intercept']
 
 # effet de l'hauteur de l'entaille sur la contamination microbienne ------------
-# TR - Need to look at whether a lognormal distribution isr really the best fit.
+# TR - Need to look at whether a lognormal distribution is really the best fit.
 # It almost looks uniformly distributed.
 mod_atp <- brms::brm(brms::bf(log(atp) ~ 
-                                  h +             # hauteur de l'entaille 
+                                  t +             # hauteur de l'entaille  (t pour catégorique et h pour gradient)
                                   (1 | date) +    # différence par date
                                   (1 | systeme)), # difference antre systèmes
                      data = d1,
