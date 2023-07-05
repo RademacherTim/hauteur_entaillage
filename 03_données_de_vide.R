@@ -121,6 +121,18 @@ for (s in systèmes) {
   
 } # fin boucle systèmes
 
+# brouiller les données --------------------------------------------------------
+d1 <- d1 %>% mutate(datetime = as_datetime(datetime))
+
+# créer des moyennes horaires --------------------------------------------------
+d1_horaire <- d1 %>% 
+  group_by(système, 
+           ligne, 
+           traitement, 
+           heure = floor_date(datetime, "1 hour")) %>%
+  summarise(t_capteur = mean(t_capteur),
+            vide = mean(vide))
+
 # lire les données de température ----------------------------------------------
 #===============================================================================
 
@@ -165,4 +177,24 @@ for (f in noms_fichiers){
   }
 }
 
+# ajouter un colonne pour les plages horaires ----------------------------------
+d2 <- d2 %>% 
+  group_by(jj, date, datetime, heure = floor_date(datetime, "1 hour")) %>%
+  summarise(t_min = mean(t_min),
+            t_max = mean(t_max),
+            temp = mean(temp), .groups = 'keep')
 
+# fusionner les deux jeux de données -------------------------------------------
+d <- left_join(d1_horaire, d2, by = 'heure') %>%
+  relocate(date, jj, heure, système, ligne, traitement, t_capteur, t_min, 
+           t_max, temp, vide) %>% 
+  select(-datetime) %>% 
+  mutate(vide_ligne = case_when(
+    temp <= -2 ~ NA,
+    temp >  -2 ~ vide,
+  ))
+
+# calculer les moyennes journalières -------------------------------------------
+d_journalier <- d %>% 
+  group_by(système, ligne, traitement, date) %>%
+  summarise(vide_ligne = mean(vide_ligne, na.rm = TRUE), .groups = 'keep')
