@@ -1,6 +1,7 @@
 # charger les dépendances ------------------------------------------------------
 if (!existsFunction('read_excel')) library ('readxl')
 if (!existsFunction('%>%')) library ('tidyverse')
+if (!existsFunction('str_squish')) library('stringr')
 
 # clé --------------------------------------------------------------------------
 # il avait quatre hauteurs différentes dans les traitements :
@@ -18,15 +19,25 @@ systèmes <- strsplit(struc$systèmes, ', ')[[1]]
 lignes <- strsplit(struc$lignes, ', ')[[1]]
 dates <-  as.character(strsplit(struc$dates, ', ')[[1]])
 a <- struc$année
-  
+
+# lire les données de vide ----------------------------------------------------- 
+#=============================================================================== 
+
 # boucle des systèmes ----------------------------------------------------------
 for (s in systèmes) {
   
   # fait une liste des fichiers à lire -----------------------------------------
-  noms_dossiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/'))
+  if (s != 'PompesVide') {
+    noms_dossiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/'))
   
-  # réduit la liste des dossiers -----------------------------------------------
-  noms_dossiers <- noms_dossiers[substr(noms_dossiers, 1, 10) %in% dates]
+    # réduit la liste des dossiers ---------------------------------------------
+    noms_dossiers <- noms_dossiers[substr(noms_dossiers, 1, 10) %in% dates]
+  } else {
+    noms_dossiers <- list.files(paste0(dir,s,'/'))
+    
+    # réduit la liste des dossiers ---------------------------------------------
+    noms_dossiers <- noms_dossiers[substr(noms_dossiers, 8, 17) %in% dates]
+  }
   
   # vérifie qu'il y a un dossier par date --------------------------------------
   if (length(noms_dossiers) > length(dates)) break ("Erreur : Trop de dossiers!")
@@ -35,7 +46,11 @@ for (s in systèmes) {
   for (date_fin in dates) {
     
     # obtenir les noms des fichiers --------------------------------------------
-    noms_fichiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/'))
+    if (s != 'PompesVide') {
+      noms_fichiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/'))
+    } else {
+      noms_fichiers <- noms_dossiers
+    }
     
     # boucle des fichiers ------------------------------------------------------
     for (f in noms_fichiers){
@@ -47,16 +62,23 @@ for (s in systèmes) {
       composantes <- strsplit(f, split = '_')[[1]]
       ligne <- composantes[1]
       if (!(ligne %in% lignes)) break ("Erreur : La ligne n'existe pas!")
-      t1 <- composantes[2]
+      t1 <- ifelse(s != 'PompesVide', composantes[2], "POMPES_1")
       
       # défini deuxième traitement, le cas échéant -----------------------------
-      if (substr(composantes[3], 1, 4) != a) {
-        t2 <- composantes[3]
+      if (s != 'PompesVide') {
+        if (substr(composantes[3], 1, 4) != a) {
+          t2 <- composantes[3]
+          double <- TRUE
+        }
+      } else {
+        t2 <- "POMPES-2"
         double <- TRUE
       }
       
       # lire les données du fichier et ajoute ----------------------------------
-      tmp <- read_excel(path = paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/',f), 
+      tmp <- read_excel(path = ifelse(s != 'PompesVide', 
+                                      paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/',f),
+                                      paste0(dir,s,'/',f)),
                         skip = 1, 
                         sheet = "Ark1")
         
@@ -85,10 +107,10 @@ for (s in systèmes) {
         relocate(datetime, système, ligne, t_capteur, vide)
       
       # combine les données ----------------------------------------------------
-      if (f == noms_fichiers[1] & date_fin == dates[1]) {
-        d <- tmp
+      if (s == systèmes[1] & date_fin == dates[1] & f == noms_fichiers[1]) {
+        d1 <- tmp
       } else {
-        d <- rbind (d, tmp)
+        d1 <- rbind(d1, tmp)
       }
       
       # supprime les variables de traitement -----------------------------------
@@ -98,3 +120,49 @@ for (s in systèmes) {
   } # fin boucle dates
   
 } # fin boucle systèmes
+
+# lire les données de température ----------------------------------------------
+#===============================================================================
+
+# obtient les noms des fichiers ------------------------------------------------
+noms_fichiers <- list.files(paste0(dir,'TEMP/'))[-1]
+
+# extraire les jours julien et dates des noms ----------------------------------
+jj <- as.numeric(sapply(strsplit(sapply(strsplit(noms_fichiers, '_'), "[[", 2), split = "[.]"), "[[", 1))
+dates_temp <- as_date(jj, origin = as_date(paste(a,'-01-01')))
+
+# boucle fichiers --------------------------------------------------------------
+for (f in noms_fichiers){
+  
+  # lire les données brutes ----------------------------------------------------
+  tmp2 <- read_tsv(file = paste0(dir,'TEMP/',f),
+                   col_names = FALSE, show_col_types = FALSE)
+  
+  tmp2 <- as_tibble(t(as_tibble(sapply(sapply(tmp2, str_squish), strsplit, split = ' +')))) %>%
+    rename(jj = V1, h = V2, t_min = V3, t_max = V4, temp = V5) %>% 
+    mutate(jj = as.integer(jj),
+           h = as.integer(h),
+           t_min = as.numeric(t_min),
+           t_max = as.numeric(t_max),
+           temp = as.numeric(temp)) %>%
+    mutate(date = as_date(jj, origin = paste0(a, '-01-01')),
+           h = ifelse(h < 10, 
+                      paste0('000', h), 
+                      ifelse(h < 100, 
+                             paste0('00', h), 
+                             ifelse(h < 1000, paste0('0', h), h))),
+           datetime = as_datetime(paste(date, h), format = 
+                                    '%Y-%m-%d %H%M', 
+                                  tz = 'EST')) %>%
+    select(-h) %>%
+    relocate(jj, date, datetime, t_min, t_max, temp)
+  
+  # ajoute les données de température ------------------------------------------
+  if (f == noms_fichiers[1]) {
+    d2 <- tmp2
+  } else {
+    d2 <- rbind(d2, tmp2)
+  }
+}
+
+
