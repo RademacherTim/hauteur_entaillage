@@ -2,6 +2,7 @@
 if (!existsFunction('read_excel')) library ('readxl')
 if (!existsFunction('%>%')) library ('tidyverse')
 if (!existsFunction('str_squish')) library('stringr')
+if (existsFunction('openxlsx')) library('createWorkbook')
 
 # clé --------------------------------------------------------------------------
 # il avait quatre hauteurs différentes dans les traitements :
@@ -180,21 +181,51 @@ for (f in noms_fichiers){
 # ajouter un colonne pour les plages horaires ----------------------------------
 d2 <- d2 %>% 
   group_by(jj, date, datetime, heure = floor_date(datetime, "1 hour")) %>%
-  summarise(t_min = mean(t_min),
-            t_max = mean(t_max),
+  summarise(t_min = min(t_min),
+            t_max = max(t_max),
             temp = mean(temp), .groups = 'keep')
 
 # fusionner les deux jeux de données -------------------------------------------
-d <- left_join(d1_horaire, d2, by = 'heure') %>%
+d_horaire <- left_join(d1_horaire, d2, by = 'heure') %>%
   relocate(date, jj, heure, système, ligne, traitement, t_capteur, t_min, 
            t_max, temp, vide) %>% 
   select(-datetime) %>% 
   mutate(vide_ligne = case_when(
-    temp <= -2 ~ NA,
+    temp <= -2 ~ NA, # TR - Il faut change les seuils ici. La pompe s'arrête à 2C et re-démarre à -0.5C
     temp >  -2 ~ vide,
   ))
 
 # calculer les moyennes journalières -------------------------------------------
-d_journalier <- d %>% 
+d_journalier <- d_horaire %>% 
   group_by(système, ligne, traitement, date) %>%
-  summarise(vide_ligne = mean(vide_ligne, na.rm = TRUE), .groups = 'keep')
+  summarise(vide_ligne = mean(vide_ligne, na.rm = TRUE), 
+            t_capteur = mean(t_capteur, na.rm = TRUE),
+            t_min = min(t_min, na.rm = TRUE),
+            t_max = max(t_max, na.rm = TRUE),
+            temp = mean(temp, na.rm = TRUE),
+            .groups = 'keep')
+
+# crée un nouveau fichier excel ------------------------------------------------
+OUT <- openxlsx::createWorkbook()
+
+# ajoute des feuilles au fichier excel -----------------------------------------
+openxlsx::addWorksheet(OUT, "Données brutes")
+openxlsx::addWorksheet(OUT, "Données horaires")
+openxlsx::addWorksheet(OUT, "Données journalières")
+
+# écrit les données dans le fichier --------------------------------------------
+openxlsx::writeData(OUT, sheet = "Données brutes", x = as.data.frame(d1))
+openxlsx::writeData(OUT, sheet = "Données horaires", x = as.data.frame(d_horaire))
+openxlsx::writeData(OUT, sheet = "Données journalières", x = as.data.frame(d_journalier))
+
+# exporte les données dans un fichier excel ------------------------------------
+openxlsx::saveWorkbook(OUT, paste0('Compilation_données_vide_',a,'.xlsx'),
+                       overwrite = TRUE)
+
+# début de la saison était le 2023-03-21 et le fin était le 2023-04-16 ---------
+
+# calcule les moyennes pour la saison des sucres -------------------------------
+d_horaire %>% group_by(système, ligne, traitement) %>% 
+  summarise(vide_m = mean(vide_ligne, na.rm = TRUE),
+            vide_et = sd(vide, na.rm = TRUE)) %>% print(n = 40)
+
