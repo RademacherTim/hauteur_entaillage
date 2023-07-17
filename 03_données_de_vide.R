@@ -132,7 +132,7 @@ d1_horaire <- d1 %>%
            traitement, 
            heure = floor_date(datetime, "1 hour")) %>%
   summarise(t_capteur = mean(t_capteur),
-            vide = mean(vide))
+            vide = mean(vide), .groups = 'drop')
 
 # lire les données de température ----------------------------------------------
 #===============================================================================
@@ -203,7 +203,10 @@ d_journalier <- d_horaire %>%
             t_min = min(t_min, na.rm = TRUE),
             t_max = max(t_max, na.rm = TRUE),
             temp = mean(temp, na.rm = TRUE),
-            .groups = 'keep')
+            .groups = 'drop')
+
+# TR - Ajouter les dégrès jours et l'indice SBB --------------------------------
+
 
 # crée un nouveau fichier excel ------------------------------------------------
 OUT <- openxlsx::createWorkbook()
@@ -223,7 +226,6 @@ openxlsx::saveWorkbook(OUT, paste0('Compilation_données_vide_',a,'.xlsx'),
                        overwrite = TRUE)
 
 # début de la saison était le 2023-03-21 et le fin était le 2023-04-16 ---------
-
 # calcule les moyennes pour la saison des sucres -------------------------------
 d_horaire %>% group_by(système, ligne, traitement) %>% 
   summarise(vide_m = mean(vide_ligne, na.rm = TRUE),
