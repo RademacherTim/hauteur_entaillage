@@ -1,7 +1,7 @@
 # dépendances ------------------------------------------------------------------
-if(!existsFunction('brms')) library('brms')
-if(!existsFunction('pp_check')) library('rstanarm')
-if(!existsFunction('%>%')) library('tidyverse')
+if (!existsFunction('brms')) library('brms')
+if (!existsFunction('pp_check')) library('rstanarm')
+if (!existsFunction('%>%')) library('tidyverse')
 
 # lire les données -------------------------------------------------------------
 if (!exists('d')) source('01_lire_données.R')
@@ -21,7 +21,7 @@ axis(side = 1, at = as_datetime(c('2023-03-20', '2023-03-27', '2023-04-03',
      labels = c('20 mar', '27 mar', '3 avr', '10 avr', '17 avr'))
 axis(side = 2, las = 1)
 for (i in 1:dim(info)[1]){
-  con <- d$h == info$h[i] & d$systeme == info$systeme[i]
+  con <- d$t == info$h[i] & d$systeme == info$systeme[i]
   points(x = d$datetime[con] + 
            hours(sample(-4:4, size = length(d$datetime[con]), replace = TRUE)), 
          y = d$rendement[con], pch = info$sym[i], col = info$colour[i], 
@@ -52,7 +52,7 @@ legend(x = as_datetime('2023-04-14 12:00:00'), y = 12, bg = 'transparent',
 mod_vol <- brms::brm(brms::bf(rendement ~ 
                              t +             # hauteur de l'entaille (t pour catégorique et h pour gradient)
                              (1 | date) +    # différence par date
-                             (1 | systeme)), # difference antre systèmes
+                             (1 | systeme)), # différence entre systèmes
                       data = d,
                       family = gaussian(), 
                       prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
