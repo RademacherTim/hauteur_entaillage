@@ -8,52 +8,61 @@ if (!exists('d')) source('01_lire_données.R')
 
 # erreur des instruments -------------------------------------------------------
 atp_se   <- 5      # Hygiena SureSystem II 5% ou 5 RLUs
-ph_se    <- 0.01   # Atago Pal-Maple (0-85%)
-brix1_se <- 0.2    # Extech ExStick 
+ph_se    <- 0.01   # Extech ExStick 
+brix1_se <- 0.2    # Atago Pal-Maple (0-85%)
 
 # rendement par hauteur et systeme ---------------------------------------------
-par(mar = c(5, 5, 1, 2))
+par(mar = c(5, 5, 1, 2), mfrow = c(2, 1))
 plot(x = d$datetime, y = d$rendement, 
-     xlab = 'Date', ylab = 'Rendement par entaille (litres)', axes = FALSE, 
-     col = 'white', xlim = as_datetime(c('2023-03-19', '2023-04-17')), ylim = c(0, 12))
-axis(side = 1, at = as_datetime(c('2023-03-20', '2023-03-27', '2023-04-03', 
-                                  '2023-04-10', '2023-04-17')),
-     labels = c('20 mar', '27 mar', '3 avr', '10 avr', '17 avr'))
+     xlab = "Date", ylab = "Rendement par entaille (litres)", axes = FALSE, 
+     col = "white", xlim = as_datetime(c("2023-02-27", "2023-04-17")), 
+     ylim = c(0, 12))
+axis(side = 1, at = as_datetime(c("2023-02-28", "2023-03-06", "2023-03-13", 
+                                  "2023-03-20", "2023-03-27", "2023-04-03", 
+                                  "2023-04-10", "2023-04-17")),
+     labels = c("28 feb", "6 mar", "13 mar", "20 mar", "27 mar", "3 avr", 
+                "10 avr", "17 avr"))
 axis(side = 2, las = 1)
 for (i in 1:dim(info)[1]){
-  con <- d$t == info$h[i] & d$systeme == info$systeme[i]
+  con <- d$t == info$t[i] & d$systeme == info$systeme[i]
   points(x = d$datetime[con] + 
            hours(sample(-4:4, size = length(d$datetime[con]), replace = TRUE)), 
          y = d$rendement[con], pch = info$sym[i], col = info$colour[i], 
          bg = info$colour[i])
 }
-legend(x = as_datetime('2023-04-11 12:00:00'), y = 12, bg = 'transparent', 
-       box.lty = 0, legend = rep('',  4), 
-       col = c('#008837', 'white', 'white', '#7b3294'),
-       pt.bg = c('#008837', 'white', 'white', '#7b3294'),
-       pch = 21, title = 'A')
-legend(x = as_datetime('2023-04-12 12:00:00'), y = 12, bg = 'transparent', 
-       box.lty = 0, legend = rep('',  4), 
-       col = c('white', 'white', '#c2a5cf', '#7b3294'),
-       pt.bg = c('white', 'white', '#c2a5cf', '#7b3294'),
-       pch = 22, title = 'B')
-legend(x = as_datetime('2023-04-13 12:00:00'), y = 12, bg = 'transparent', 
-       box.lty = 0, legend = rep('',  4), 
-       col = c('#008837', '#a6dba0', 'white', 'white'),
-       pt.bg = c('#008837', '#a6dba0', 'white', 'white'),
-       pch = 23, title = 'C')
-legend(x = as_datetime('2023-04-14 12:00:00'), y = 12, bg = 'transparent', 
-       box.lty = 0, legend = c('+24"',  '  +4"', '   -4"', ' -24"'), 
-       col = c('#008837', '#a6dba0', '#c2a5cf', '#7b3294'),
-       pt.bg = c('#008837', '#a6dba0', '#c2a5cf', '#7b3294'),
-       pch = 24, title = 'E')
+text(x = as_datetime("2023-04-17"), y = 12, labels = "2023", cex = 1)
+legend(x = as_datetime("2023-03-01 12:00:00"), y = 12, bg = "transparent", 
+       box.lty = 0, legend = c("+24\"",  "+12\"",  "  +4\"", "   -4\"", "-12\"", 
+                               " -24\""), 
+       col = c("#00441b", "#1b7837", "#a6dba0", "#c2a5cf", "#762a83", "#40004b"),
+       pt.bg = c("#00441b", "#1b7837", "#a6dba0", "#c2a5cf", "#762a83","#40004b"),
+       pch = c(2, 24, 1, 5, 25, 6))
+plot(x = d$datetime, y = d$rendement, 
+     xlab = "Date", ylab = "Rendement par entaille (litres)", axes = FALSE, 
+     col = "white", xlim = as_datetime(c("2024-02-27", "2024-04-17")), 
+     ylim = c(0, 12))
+axis(side = 1, at = as_datetime(c("2024-02-28", "2024-03-06", "2024-03-13", 
+                                  "2024-03-20", "2024-03-27", "2024-04-03", 
+                                  "2024-04-10", "2024-04-17")),
+     labels = c("28 feb", "6 mar", "13 mar", "20 mar", "27 mar", "3 avr", 
+                "10 avr", "17 avr"))
+axis(side = 2, las = 1)
+for (i in 1:dim(info)[1]){
+  con <- d$t == info$t[i] & d$systeme == info$systeme[i]
+  points(x = d$datetime[con] + 
+           hours(sample(-4:4, size = length(d$datetime[con]), replace = TRUE)), 
+         y = d$rendement[con], pch = info$sym[i], col = info$colour[i], 
+         bg = info$colour[i])
+}
+text(x = as_datetime("2024-04-17"), y = 12, labels = "2024", cex = 1)
 
 # L'effet de l'hauteur de l'entaille sur le rendement --------------------------
 mod_vol <- brms::brm(brms::bf(rendement ~ 
-                             t +             # hauteur de l'entaille (t pour catégorique et h pour gradient)
-                             (1 | date) +    # différence par date
-                             (1 | systeme)), # différence entre systèmes
-                      data = d,
+                              h +                     # effet de l'hauteur de l'entaille 
+                              (1 | année / date) +    # différence entre année et date
+                              (1 | systeme / ligne) + # différence entre systèmes et ligne
+                              (1 | site)),            # effet du site
+                      data = d, #%>% filter(site == "SN"),
                       family = gaussian(), 
                       prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
                                 set_prior('exponential(1)', class = 'sigma'),
@@ -71,58 +80,74 @@ pp_check(mod_vol, type = 'error_hist',  ndraws = 10)
 pp_check(mod_vol, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
+# effet de l'hauteur relative de l'entaille ---------------------------––-------
+plot(conditional_effects(mod_vol)) [[1]]
+# L'effet est petit mais important, car chaque centimetres, entaille et coulée 
+# ont un effet. En somme, l'effet de 0.002 L par entaille par coulée par cm est 
+# important. Par exemple, pour une saison de 15 coulée faire l'entaille 50 cm 
+# plus haut donne 1.5L plus de sève par entaille. 
+
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol)
+ranef(mod_vol)$site
+ranef(mod_vol)$année [, , 'Intercept']
+ranef(mod_vol)$`année:date`[, , 'Intercept']
 ranef(mod_vol)$systeme [, , 'Intercept']
-ranef(mod_vol)$date [, , 'Intercept']
+ranef(mod_vol)$`systeme:ligne`[, , "Intercept"]
 
 # teneur en sucre par hauteur et système ---------------------------------------
-par(mar = c(5, 5, 1, 2))
+par(mar = c(5, 5, 1, 2), mfrow = c (2, 1))
 plot(x = d$datetime, y = d$brix, 
-     xlab = 'Date', 
-     ylab = expression(paste('Teneur en sucre (',degree,'Brix)', sep = '')), 
+     xlab = "Date", 
+     ylab = expression(paste("Teneur en sucre (",degree,"Brix)", sep = "")), 
      axes = FALSE, 
-     col = 'white', 
-     xlim = as_datetime(c('2023-03-19', '2023-04-17')), ylim = c(0, 4))
-axis(side = 1, at = as_datetime(c('2023-03-20', '2023-03-27', '2023-04-03', 
-                                  '2023-04-10', '2023-04-17')),
-     labels = c('20 mar', '27 mar', '3 avr', '10 avr', '17 avr'))
+     col = "white", 
+     xlim = as_datetime(c("2023-02-27", "2023-04-17")), ylim = c(1, 3))
+axis(side = 1, at = as_datetime(c("2023-02-28", "2023-03-06", "2023-03-13", 
+                                  "2023-03-20", "2023-03-27", "2023-04-03", 
+                                  "2023-04-10", "2023-04-17")),
+     labels = c("28 feb", "6 mar", "13 mar", "20 mar", "27 mar", "3 avr", "10 avr", "17 avr"))
 axis(side = 2, las = 1)
 for (i in 1:dim(info)[1]){
-  con <- d$h == info$h[i] & d$systeme == info$systeme[i]
+  con <- d$t == info$t[i] & d$systeme == info$systeme[i]
   points(x = d$datetime[con] + 
            hours(sample(-4:4, size = length(d$datetime[con]), replace = TRUE)), 
          y = d$brix[con], pch = info$sym[i], col = info$colour[i], 
          bg = info$colour[i])
 }
-legend(x = as_datetime('2023-04-12 12:00:00'), y = 4, bg = 'transparent', 
-       box.lty = 0, legend = rep('',  4), 
-       col = c('#008837', 'white', 'white', '#7b3294'),
-       pt.bg = c('#008837', 'white', 'white', '#7b3294'),
-       pch = 21, title = 'A')
-legend(x = as_datetime('2023-04-13 12:00:00'), y = 4, bg = 'transparent', 
-       box.lty = 0, legend = rep('',  4), 
-       col = c('white', 'white', '#c2a5cf', '#7b3294'),
-       pt.bg = c('white', 'white', '#c2a5cf', '#7b3294'),
-       pch = 22, title = 'B')
-legend(x = as_datetime('2023-04-14 12:00:00'), y = 4, bg = 'transparent', 
-       box.lty = 0, legend = rep('',  4), 
-       col = c('#008837', '#a6dba0', 'white', 'white'),
-       pt.bg = c('#008837', '#a6dba0', 'white', 'white'),
-       pch = 23, title = 'C')
-legend(x = as_datetime('2023-04-15 12:00:00'), y = 4, bg = 'transparent', 
+legend(x = as_datetime("2023-02-28 12:00:00"), y = 3, bg = "transparent", 
        box.lty = 0,
-       legend = c('+24\"',  '  +4"', '   -4"', ' -24"'), 
-       col = c('#008837', '#a6dba0', '#c2a5cf', '#7b3294'),
-       pt.bg = c('#008837', '#a6dba0', '#c2a5cf', '#7b3294'),
-       pch = 24, title = 'E')
+       legend = c("+24\"",  "  +12\"",  "  +4\"", "   -4\"", "-12\"", "-24\""), 
+       col = c("#00441b", "#1b7837", "#a6dba0", "#c2a5cf", "#762a83", "#40004b"),
+       pt.bg = c("#00441b", "#1b7837", "#a6dba0", "#c2a5cf", "#762a83","#40004b"),
+       pch = c(2, 24, 1, 5, 25, 6))
+plot(x = d$datetime, y = d$brix, 
+     xlab = "Date", 
+     ylab = expression(paste("Teneur en sucre (",degree,"Brix)", sep = "")), 
+     axes = FALSE, 
+     col = "white", 
+     xlim = as_datetime(c("2024-02-27", "2024-04-17")), ylim = c(1, 3))
+axis(side = 1, at = as_datetime(c("2024-02-28", "2024-03-06", "2024-03-13", 
+                                  "2024-03-20", "2024-03-27", "2024-04-03", 
+                                  "2024-04-10", "2024-04-17")),
+     labels = c("28 feb", "6 mar", "13 mar", "20 mar", "27 mar", "3 avr", "10 avr", "17 avr"))
+axis(side = 2, las = 1)
+for (i in 1:dim(info)[1]){
+  con <- d$t == info$t[i] & d$systeme == info$systeme[i]
+  points(x = d$datetime[con] + 
+           hours(sample(-4:4, size = length(d$datetime[con]), replace = TRUE)), 
+         y = d$brix[con], pch = info$sym[i], col = info$colour[i], 
+         bg = info$colour[i])
+}
 
-# effet de l'hauteur de l'entaille sur le teneur en sucre ----------------------
+# effet de l'hauteur de l'entaille sur le teneur en sucre (seulement disponible 
+# pour St-Norbert-d'Arthabaska) ------------------------------------------------
 mod_brix1 <- brms::brm(brms::bf(brix | mi(brix1_se) ~ 
-                             t +             # hauteur de l'entaille  (t pour catégorique et h pour gradient)
-                             (1 | date) +    # différence par date
-                             (1 | systeme)), # difference antre systèmes
+                             h +                     # hauteur de l'entaille  (t pour catégorique et h pour gradient)
+                             (1 | année / date) +    # différence entre année et date
+                             (1 | systeme / ligne)), # difference entre systèmes et lignes
                        data = d %>% add_column(brix1_se = brix1_se) %>% 
+                         filter(site == "SN") %>%
                          select(-rendement, -datetime),
                        family = gaussian(), 
                        prior = c(set_prior('normal(2, 5)', class = 'Intercept'),
@@ -141,10 +166,16 @@ pp_check(mod_brix1, type = 'error_hist',  ndraws = 10)
 pp_check(mod_brix1, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
+# effet de l'hauteur relative de l'entaille ---------------------------––-------
+plot(conditional_effects(mod_brix1)) [[1]]
+
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_brix1)
+ranef(mod_brix1)$site
+ranef(mod_brix1)$année [, , 'Intercept']
+ranef(mod_brix1)$`année:date`[, , 'Intercept']
 ranef(mod_brix1)$systeme [, , 'Intercept']
-ranef(mod_brix1)$date [, , 'Intercept']
+ranef(mod_brix1)$`systeme:ligne`[, , "Intercept"]
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre ----------------------
 mod_brix2 <- brms::brm(brms::bf(brix ~ 
