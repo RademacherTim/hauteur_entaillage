@@ -434,71 +434,211 @@ d <- rbind(d, CE_b1_2022, CE_h1_2022, CE_b1_2023, CE_h1_2023)
 # TR - Je dois encore vérifier que ces données sont bien intégrées!!!
 
 # re-définir les noms des colonnes ---------------------------------------------
-noms_col_SN <- c('date', 'time', 'responsable', 'periode', 'A_h2', 'C_h2', 
-                  'C_h1', 'B_b1', 'A_b2', 'B_b2')
+noms_col_SN_2023 <- c("date", "temps", "responsable", "periode", "A_AC_h3", 
+                      "C_CC_h3", "C_CT_h1", "B_BC_b1", "A_AT_b3", "B_BT_b3")
+noms_col_SN_2024 <- c("date", "temps", "responsable", "periode", "B_BC_h3", 
+                      "C_CT_h3", "A_AT_h2", "C_CC_b2", "A_AC_b3", "B_BT_b3")
 
-# lire les données pour atp ----------------------------------------------------
-brix <- readxl::read_excel(path = '../données/Copie de 4010408_RécolteSN_V2JH.xlsx',
-                           sheet = 'CompilationDonnées', range = 'A4:J14',
-                           col_types = c('date', 'text', 'text', 'text', rep('numeric', 6)),
-                           col_names = noms_col_SN) %>% 
-  pivot_longer(cols = c('A_h2', 'C_h2', 'C_h1', 'B_b1', 'A_b2', 'B_b2'), 
-               names_to = c('systeme', 'h'), names_sep = '_') %>%
+# noms des fichier -------------------------------------------------------------
+nom_fichier_SN_2023 <- "../données/Copie de 4010408_RécolteSN_V2JH.xlsx"
+nom_fichier_SN_2024 <- "../données/4010408_RécolteSN_2024.xlsx"
+
+# lire les données pour le brix ------------------------------------------------
+brix_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
+                                sheet = 'CompilationDonnées', range = 'A4:J14',
+                                col_types = c('date', 'text', 'text', 'text', 
+                                              rep('numeric', 6)),
+                                col_names = noms_col_SN_2023) %>% 
+  pivot_longer(cols = c("A_AC_h3", "C_CC_h3", "C_CT_h1", "B_BC_b1", "A_AT_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "brix") %>%
   mutate(date = as_date(date),
-         heure = as.numeric(substr(time, 1, 2)),
-         minute = as.numeric(substr(time, 6, 7)),
-         datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>%
-  select(-c(responsable, periode, time, heure, minute))
-atp <- readxl::read_excel(path = '../données/Copie de 4010408_RécolteSN_V2JH.xlsx',
-                          sheet = 'CompilationDonnées', range = 'A25:J35',
-                          col_types = c('date', 'text', 'text', 'text', rep('numeric', 6)),
-                          col_names = noms_col_SN) %>% 
-  pivot_longer(cols = c('A_h2', 'C_h2', 'C_h1', 'B_b1', 'A_b2', 'B_b2'), 
-               names_to = c('systeme', 'h'), names_sep = '_') %>%
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2023")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+brix_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
+                                sheet = 'Compilation_Données_2024', range = 'A4:J15',
+                                col_types = c('date', 'text', 'text', 'text', 
+                                              rep('numeric', 6)),
+                                col_names = noms_col_SN_2024) %>% 
+  pivot_longer(cols = c("B_BC_h3", "C_CT_h3", "A_AT_h2", "C_CC_b2", "A_AC_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "brix") %>%
   mutate(date = as_date(date),
-         heure = as.numeric(substr(time, 1, 2)),
-         minute = as.numeric(substr(time, 6, 7)),
-         datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>%
-  select(-c(responsable, periode, time, heure, minute))
-ph <-  readxl::read_excel(path = '../données/Copie de 4010408_RécolteSN_V2JH.xlsx',
-                          sheet = 'CompilationDonnées', range = 'A47:J57',
-                          col_types = c('date', 'text', 'text', 'text', rep('numeric', 6)),
-                          col_names = noms_col_SN) %>% 
-  pivot_longer(cols = c('A_h2', 'C_h2', 'C_h1', 'B_b1', 'A_b2', 'B_b2'), 
-               names_to = c('systeme', 'h'), names_sep = '_') %>%
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2024")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+brix <- rbind(brix_2023, brix_2024) %>% 
+  mutate(t = factor(t, levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
+         h = case_when(
+           t == "h3" ~ 60.96,
+           t == "h2" ~ 30.48,
+           t == "h1" ~ 20.32,
+           t == "b1" ~ -20.32,
+           t == "b2" ~ -30.48,
+           t == "b3" ~ -60.96,
+         )) %>% 
+  mutate(systeme = factor(systeme, levels = c("A", "B", "C")),
+         ligne = factor(ligne, levels = c("AC", "AT", "BC", "BT", "CC", "CT"))) %>%
+  relocate(année, date, datetime, systeme, ligne, t, h, brix)
+
+# lire les données pour l'atp --------------------------------------------------
+atp_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
+                                sheet = 'CompilationDonnées', range = 'A25:J35',
+                                col_types = c('date', 'text', 'text', 'text', 
+                                              rep('numeric', 6)),
+                                col_names = noms_col_SN_2023) %>% 
+  pivot_longer(cols = c("A_AC_h3", "C_CC_h3", "C_CT_h1", "B_BC_b1", "A_AT_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "atp") %>%
   mutate(date = as_date(date),
-         heure = as.numeric(substr(time, 1, 2)),
-         minute = as.numeric(substr(time, 6, 7)),
-         datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>% 
-  select(-c(responsable, periode, time, heure, minute))
-sc <-  readxl::read_excel(path = '../données/Copie de 4010408_RécolteSN_V2JH.xlsx',
-                          sheet = 'CompilationDonnées', range = 'A92:J102',
-                          col_types = c('date', 'text', 'text', 'text', rep('numeric', 6)),
-                          col_names = noms_col_SN) %>% 
-  pivot_longer(cols = c('A_h2', 'C_h2', 'C_h1', 'B_b1', 'A_b2', 'B_b2'), 
-               names_to = c('systeme', 'h'), names_sep = '_') %>%
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2023")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+atp_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
+                                sheet = 'Compilation_Données_2024', range = 'A20:J31',
+                                col_types = c('date', 'text', 'text', 'text', 
+                                              rep('numeric', 6)),
+                                col_names = noms_col_SN_2024) %>% 
+  pivot_longer(cols = c("B_BC_h3", "C_CT_h3", "A_AT_h2", "C_CC_b2", "A_AC_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "atp") %>%
   mutate(date = as_date(date),
-         heure = as.numeric(substr(time, 1, 2)),
-         minute = as.numeric(substr(time, 6, 7)),
-         datetime = ymd_hm(str_c(date, heure, minute, sep = " "))) %>%
-  select(-c(responsable, periode, time, heure, minute)) 
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2024")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+atp <- rbind(atp_2023, atp_2024) %>% 
+  mutate(t = factor(t, levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
+         h = case_when(
+           t == "h3" ~ 60.96,
+           t == "h2" ~ 30.48,
+           t == "h1" ~ 20.32,
+           t == "b1" ~ -20.32,
+           t == "b2" ~ -30.48,
+           t == "b3" ~ -60.96,
+         )) %>% 
+  mutate(systeme = factor(systeme, levels = c("A", "B", "C")),
+         ligne = factor(ligne, 
+                        levels = c("AC", "AT", "BC", "BT", "CC", "CT"))) %>%
+  relocate(année, date, datetime, systeme, ligne, t, h, atp)
+
+# lire les données du ph -------------------------------------------------------
+ph_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
+                               sheet = 'CompilationDonnées', range = 'A47:J57',
+                               col_types = c('date', 'text', 'text', 'text', 
+                                             rep('numeric', 6)),
+                               col_names = noms_col_SN_2023) %>% 
+  pivot_longer(cols = c("A_AC_h3", "C_CC_h3", "C_CT_h1", "B_BC_b1", "A_AT_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "ph") %>%
+  mutate(date = as_date(date),
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2023")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+ph_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
+                               sheet = 'Compilation_Données_2024', range = 'A36:J47',
+                               col_types = c('date', 'text', 'text', 'text', 
+                                             rep('numeric', 6)),
+                               col_names = noms_col_SN_2024) %>% 
+  pivot_longer(cols = c("B_BC_h3", "C_CT_h3", "A_AT_h2", "C_CC_b2", "A_AC_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "ph") %>%
+  mutate(date = as_date(date),
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2024")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+ph <- rbind(ph_2023, ph_2024) %>% 
+  mutate(t = factor(t, levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
+         h = case_when(
+           t == "h3" ~ 60.96,
+           t == "h2" ~ 30.48,
+           t == "h1" ~ 20.32,
+           t == "b1" ~ -20.32,
+           t == "b2" ~ -30.48,
+           t == "b3" ~ -60.96,
+         )) %>% 
+  mutate(systeme = factor(systeme, levels = c("A", "B", "C")),
+         ligne = factor(ligne, levels = c("AC", "AT", "BC", "BT", "CC", "CT"))) %>%
+  relocate(année, date, datetime, systeme, ligne, t, h, ph)
+
+# lire les données de la concentration en sacchrose ----------------------------
+sc_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
+                               sheet = 'CompilationDonnées', range = 'A92:J102',
+                               col_types = c('date', 'text', 'text', 'text', 
+                                             rep('numeric', 6)),
+                               col_names = noms_col_SN_2023) %>% 
+  pivot_longer(cols = c("A_AC_h3", "C_CC_h3", "C_CT_h1", "B_BC_b1", "A_AT_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "sc") %>%
+  mutate(date = as_date(date),
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2023")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+sc_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
+                               sheet = 'Compilation_Données_2024', range = 'A68:J79',
+                               col_types = c('date', 'text', 'text', 'text', 
+                                             rep('numeric', 6)),
+                               col_names = noms_col_SN_2024) %>% 
+  pivot_longer(cols = c("B_BC_h3", "C_CT_h3", "A_AT_h2", "C_CC_b2", "A_AC_b3", 
+                        "B_BT_b3"), 
+               names_to = c("systeme", "ligne", "t"), names_sep = '_', 
+               values_to = "sc") %>%
+  mutate(date = as_date(date),
+         heure = as.numeric(substr(temps, 1, 2)),
+         minute = as.numeric(substr(temps, 6, 7)),
+         datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
+         année = factor("2024")) %>%
+  select(-c(responsable, periode, temps, heure, minute))
+sc <- rbind(sc_2023, sc_2024) %>% 
+  mutate(t = factor(t, levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
+         h = case_when(
+           t == "h3" ~ 60.96,
+           t == "h2" ~ 30.48,
+           t == "h1" ~ 20.32,
+           t == "b1" ~ -20.32,
+           t == "b2" ~ -30.48,
+           t == "b3" ~ -60.96,
+         )) %>% 
+  mutate(systeme = factor(systeme, levels = c("A", "B", "C")),
+         ligne = factor(ligne, 
+                        levels = c("AC", "AT", "BC", "BT", "CC", "CT"))) %>%
+  relocate(année, date, datetime, systeme, ligne, t, h, sc)
 
 # unir les données -------------------------------------------------------------
-tmp1 <- full_join(brix, atp, by = c('date', 'datetime', 'systeme', 'h')) %>% 
-  rename(brix = value.x, atp = value.y) %>%
-  relocate(systeme, h, date, datetime, brix, atp)
-tmp2 <- full_join(ph, sc, by = c('date', 'datetime', 'systeme', 'h')) %>% 
-  rename(ph = value.x, sc = value.y) %>%
-  relocate(systeme, h, date, datetime, ph, sc)
-d1 <- full_join(tmp1, tmp2, by = c('systeme', 'h', 'date', 'datetime')) %>% 
-  mutate(t = factor(h, levels = c('h2', 'h1', 'b1', 'b2')),
-         systeme = factor(systeme, levels = c('A', 'B', 'C', 'E'))) %>% 
-  mutate(h = case_when(h == 'h2' ~  60.96, 
-                       h == 'h1' ~  10.16,
-                       h == 'b1' ~ -10.16,
-                       h == 'b2' ~ -60.96))
+tmp1 <- full_join(brix, atp, by = c("année", "date", "datetime", "systeme", 
+                                    "ligne", "t", "h"))
+tmp2 <- full_join(ph, sc, by = c("année", "date", "datetime", "systeme", 
+                                 "ligne", "t", "h"))
+d1 <- full_join(tmp1, tmp2, by = c("année", "date", "datetime", "systeme", 
+                                   "ligne", "t", "h"))
 
 # nettoyer l'espace de travail -------------------------------------------------
-rm(A_b2, A_h2, atp, B_b1, B_b2, brix, C_h1, C_h2, noms_col_SN, types_col_SN, 
-   E_b1, E_b2, E_h1, E_h2, file_name_CE, file_name_SN, ph, sc, systeme, tmp1, 
-   tmp2, traitement)
+rm(A_b3_2023, A_b3_2024, A_h2_2024, A_h3_2023, atp, atp_2023, atp_2024, 
+   B_b1_2023, B_b3_2023, B_b3_2024, B_h3_2024, brix, brix_2023, brix_2024, 
+   C_b2_2024, C_h1_2023, C_h3_2023, C_h3_2024, CE_b1_2022, CE_b1_2023, 
+   CE_h1_2022, CE_h1_2023, E_b1_2023, E_b2_2024, E_b3_2023, E_b3_2024, 
+   E_h1_2023, E_h2_2024, E_h3_2023, E_h3_2024, ph, ph_2023, ph_2024, sc, 
+   sc_2023, sc_2024, tmp1, tmp2, nom_fichier_CE_2022, nom_fichier_CE_2023, 
+   nom_fichier_SN_2023, nom_fichier_SN_2024, noms_col_CE, noms_col_SN, 
+   noms_col_SN_2023, noms_col_SN_2024, systeme, traitement, types_col_SN)
