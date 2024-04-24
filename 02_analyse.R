@@ -83,7 +83,7 @@ pp_check(mod_vol, type = 'scatter_avg', ndraws = 100)
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
 plot(conditional_effects(mod_vol)) [[1]]
 # L'effet est petit mais important, car chaque centimetres, entaille et coulée 
-# ont un effet. En somme, l'effet de 0.002 L par entaille par coulée par cm est 
+# ont un effet. En somme, l'effet de 0.001987863 L par entaille par coulée par cm est 
 # important. Par exemple, pour une saison de 15 coulée faire l'entaille 50 cm 
 # plus haut donne 1.5L plus de sève par entaille. 
 
@@ -94,6 +94,7 @@ ranef(mod_vol)$année [, , 'Intercept']
 ranef(mod_vol)$`année:date`[, , 'Intercept']
 ranef(mod_vol)$systeme [, , 'Intercept']
 ranef(mod_vol)$`systeme:ligne`[, , "Intercept"]
+summary(mod_vol)$fixed
 
 # teneur en sucre par hauteur et système ---------------------------------------
 par(mar = c(5, 5, 1, 2), mfrow = c (2, 1))
@@ -142,13 +143,13 @@ for (i in 1:dim(info)[1]){
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre (seulement disponible 
 # pour St-Norbert-d'Arthabaska) ------------------------------------------------
-mod_brix1 <- brms::brm(brms::bf(brix | mi(brix1_se) ~ 
+mod_brix1 <- brms::brm(brms::bf(brix ~ 
                              h +                     # hauteur de l'entaille  (t pour catégorique et h pour gradient)
                              (1 | année / date) +    # différence entre année et date
                              (1 | systeme / ligne)), # difference entre systèmes et lignes
-                       data = d %>% add_column(brix1_se = brix1_se) %>% 
+                       data = d %>% #add_column(brix1_se = brix1_se) %>% 
                          filter(site == "SN") %>%
-                         select(-rendement, -datetime),
+                         select(-rendement, -datetime, -site, -t),
                        family = gaussian(), 
                        prior = c(set_prior('normal(2, 5)', class = 'Intercept'),
                                  set_prior('exponential(1)', class = 'sigma'),
@@ -168,10 +169,15 @@ pp_check(mod_brix1, type = 'scatter_avg', ndraws = 100)
 
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
 plot(conditional_effects(mod_brix1)) [[1]]
+# Il semble avoir un petit effet de l'hauteur sur le brix, ce qui n'est pas à 
+# négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
+# qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
+# 2023). L'effet serait d'environ 0.06 degré brix par metre ici, donc 
+# relativement petit. 
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_brix1)
-ranef(mod_brix1)$site
+summary(mod_brix1)$fixed
 ranef(mod_brix1)$année [, , 'Intercept']
 ranef(mod_brix1)$`année:date`[, , 'Intercept']
 ranef(mod_brix1)$systeme [, , 'Intercept']
@@ -179,9 +185,9 @@ ranef(mod_brix1)$`systeme:ligne`[, , "Intercept"]
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre ----------------------
 mod_brix2 <- brms::brm(brms::bf(brix ~ 
-                                 h +             # hauteur de l'entaille 
-                                 (1 | date) +    # différence par date
-                                 (1 | systeme)), # difference antre systèmes
+                                 h +                     # hauteur de l'entaille 
+                                 (1 | année / date) +    # différence par date
+                                 (1 | systeme / ligne)), # difference antre systèmes
                        data = d1,
                        family = gaussian(), 
                        prior = c(set_prior('normal(2, 10)', class = 'Intercept'),
@@ -202,16 +208,19 @@ pp_check(mod_brix2, type = 'scatter_avg', ndraws = 100)
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_brix2)
+summary(mod_brix2)$fixed
 ranef(mod_brix2)$systeme [, , 'Intercept']
-ranef(mod_brix2)$date [, , 'Intercept']
+ranef(mod_brix2)$systeme:ligne [, , 'Intercept']
+ranef(mod_brix2)$année [, , 'Intercept']
+ranef(mod_brix2)$`année:date` [, , 'Intercept']
 
 # effet de l'hauteur de l'entaille sur la contamination microbienne ------------
 # TR - Need to look at whether a lognormal distribution is really the best fit.
 # It almost looks uniformly distributed.
 mod_atp <- brms::brm(brms::bf(log(atp) ~ 
-                                  t +             # hauteur de l'entaille  (t pour catégorique et h pour gradient)
-                                  (1 | date) +    # différence par date
-                                  (1 | systeme)), # difference antre systèmes
+                                  h +                    # hauteur de l'entaille  (t pour catégorique et h pour gradient)
+                                  (1 | année / date) +   # différence par date
+                                  (1 | systeme / ligne)), # difference antre systèmes
                      data = d1,
                      family = gaussian(), 
                      prior = c(#set_prior('normal(2, 10)', class = 'Intercept'),
@@ -232,18 +241,22 @@ pp_check(mod_atp, type = 'scatter_avg', ndraws = 100)
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_atp)
-ranef(mod_atp)$systeme [, , 'Intercept']
-ranef(mod_atp)$date [, , 'Intercept']
+summary(mod_atp)$fixed
+ranef(mod_atp)$systeme [, , "Intercept"]
+ranef(mod_atp)$systeme:ligne [, , "Intercept"]
+ranef(mod_atp)$année [, , "Intercept"]
+ranef(mod_atp)$`année:date` [, , "Intercept"]
 
 # effet de l'hauteur de l'entaille sur le pH -----------------------------------
-mod_ph <- brms::brm(brms::bf(ph | mi(ph_se) ~ 
-                               t +             # hauteur de l'entaille 
-                               (1 | date) +    # différence par date
-                               (1 | systeme)), # difference antre systèmes
-                    data = d1 %>% select(-c(brix, datetime, atp, sc)) %>% 
-                      add_column(ph_se = ph_se),
+mod_ph <- brms::brm(brms::bf(#ph | mi(ph_se) ~ 
+                             ph ~
+                               h +                     # hauteur de l'entaille 
+                               (1 | année / date) +    # différence par date
+                               (1 | systeme / ligne)), # difference entre systèmes
+                    data = d1 %>% select(-c(brix, datetime, atp, sc)), #%>% 
+                      #add_column(ph_se = ph_se),
                     family = gaussian(), 
-                    prior = c(set_prior('normal(2, 10)', class = 'Intercept'),
+                    prior = c(set_prior('normal(5, 10)', class = 'Intercept'),
                               set_prior('exponential(1)', class = 'sigma'),
                               set_prior('normal(0, 2)', class = 'b')),
                     cores = 4, chains = 4,
@@ -258,18 +271,19 @@ pp_check(mod_ph, ndraws = 100)
 pp_check(mod_ph, type = 'error_hist',  ndraws = 10)
 pp_check(mod_ph, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement, mais 
-# il n'y a pas de données de ph entre 6,4 et 7,0, ce que semble bizarre
+# il n'y a pas de données de ph entre 6,4 et 7,0, ce que semble bizarre.
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_ph)
+summary(mod_ph)$fixed
 ranef(mod_ph)$systeme [, , 'Intercept']
 ranef(mod_ph)$date [, , 'Intercept']
 
 # effet de l'hauteur de l'entaille sur le pH -----------------------------------
 mod_sc <- brms::brm(brms::bf(sc ~ 
-                               t +             # hauteur de l'entaille 
-                               (1 | date) +    # différence par date
-                               (1 | systeme)), # difference antre systèmes
+                             h +             # hauteur de l'entaille 
+                             (1 | année / date) +    # différence par date
+                             (1 | systeme / ligne)), # difference antre systèmes
                     data = d1,
                     family = gaussian(), 
                     prior = c(set_prior('normal(2, 10)', class = 'Intercept'),
@@ -291,7 +305,8 @@ pp_check(mod_sc, type = 'scatter_avg', ndraws = 100)
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_sc)
+summary(mod_sc)$fixed
 ranef(mod_sc)$systeme [, , 'Intercept']
-ranef(mod_sc)$date [, , 'Intercept']
-# Il semble avoir approximativement le même effet que avec le brix mesuré avec 
-# un refractomètre.
+ranef(mod_sc)$systeme:ligne [, , 'Intercept']
+ranef(mod_sc)$`année:date` [, , 'Intercept']
+# TR - Il manque encore les données de 2024 pour cet analyse. 

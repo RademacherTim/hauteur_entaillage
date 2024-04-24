@@ -40,6 +40,12 @@ ligne <- c("AC", "AT", "BC", "BT", "CC", "CT", "EC", "E1", "E2", "E3")
 #    b2        -30.48       mauve foncé         "#762a83"       25
 #    b3        -60.96       mauve très foncé    "#40004b"       6
 
+# initialiser les noms des fichiers --------------------------------------------
+nom_fichier_SN_2023 <- "../données/Compilation donnée érablière - 2023.xlsm"
+nom_fichier_SN_2024 <- "../données/Compilation donnée érablière - 2024.xlsm"
+nom_fichier_CE_2022 <- "../données/Projet_chalumeau_2022.xlsx"
+nom_fichier_CE_2023 <- "../données/Projet_chalumeau_2023.xlsx"
+
 # extraire les metadonnées -----------------------------------------------------
 info_SN1 <- readxl::read_excel(path = nom_fichier_SN_2023,
                                sheet = "Paramètres", range = "B19:K19",
@@ -66,12 +72,6 @@ info_SN2 <- readxl::read_excel(path = nom_fichier_SN_2024,
              sym = c(2, 6, 25, 6, 2, 24, 2, 24, 25, 6)) %>%
   mutate(année = 2024)
 info <- rbind(info_SN1, info_SN2); rm(info_SN1, info_SN2)
-
-# initialiser les noms des fichiers --------------------------------------------
-nom_fichier_SN_2023 <- "../données/Compilation donnée érablière - 2023.xlsm"
-nom_fichier_SN_2024 <- "../données/Compilation donnée érablière - 2024.xlsm"
-nom_fichier_CE_2022 <- "../données/Projet_chalumeau_2022.xlsx"
-nom_fichier_CE_2023 <- "../données/Projet_chalumeau_2023.xlsx"
 
 # initialise column names and column types -------------------------------------
 noms_col_SN <- c(
@@ -344,106 +344,136 @@ d <- d %>% mutate(t = factor(t, levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
 # initialiser les noms des colonnes --------------------------------------------
-noms_col_CE <- c('date', 'comp1', 'r1', 'r2', 'var1', 'comp2', 'r3', 'r4', 
-                  'var2', 'compteur1', 'volume1', 'rendement1', 'variation1',
-                  'compteur2', 'volume2', 'rendement2', 'variation2', 
-                  'compteur3', 'volume3', 'rendement3', 'variation3',
-                  'compteur4', 'volume4', 'rendement4', 'variation4')
+noms_col_CE <- c('date', 'comp1.1', 'récolte1.1', 'rendement1.1', 'rien1',
+                         'comp1.2', 'récolte1.2', 'rendement1.2', 'var1', 
+                         'comp2.1', 'récolte2.1', 'rendement2.1', 'rien2',
+                         'comp2.2', 'récolte2.2', 'rendement2.2', 'var2',
+                         'comp3.1', 'récolte3.1', 'rendement3.1', 'rien3',
+                         'comp3.2', 'récolte3.2', 'rendement3.2', 'var3')
 
 # lire les données de 2022 du CE (au-dessus de latéral) ------------------------
-CE_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
-                            sheet = 'Prise de données', range = 'B14:Z52',
-                            col_types = c('date', rep('numeric', 24)),
-                            col_names = noms_col_CE) %>% 
-  select(-c(comp1, r1, r2, var1, comp2, r3, r4, var2, compteur1, volume1, 
-            compteur2, variation1, volume2, variation2, compteur3, volume3, 
-            rendement3, variation3, compteur4, volume4, rendement4, 
-            variation4)) %>% 
-  filter(!is.na(rendement1) | !is.na(rendement2)) %>% 
-  mutate(datetime = date,
+F1_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
+                                 sheet = 'Prise de données', range = 'B14:Z52',
+                                 col_types = c('date', rep('numeric', 24)),
+                                 col_names = noms_col_CE) %>% 
+  select(date, rendement1.1, rendement1.2) %>% 
+  filter(!is.na(rendement1.1) | !is.na(rendement1.2)) %>% 
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), # TR - Midi ? À vérifier avec Andréanne
          date = as_date(date),
          t = factor("h1.5"),
-         h = 20.32, # Entre 6 et 12", donc j'utilise la moyenne de 8" ou 20.32
+         h = 22.86, # Entre 6 et 12", donc j'utilise la moyenne de 9" ou 22.86 cm
          # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2022"),
          systeme = factor("F"),
-         ligne = factor("F"), # TR - Je dois vérifier s'il utilisent des lignes 
+         ligne = factor("F1"),
          site = factor('CE'),
-         rendement = rowMeans(select(., rendement1, rendement2))) %>%
-  select(-c(rendement1, rendement2)) %>% add_column(brix = NA) %>% 
+         rendement = rowMeans(select(., rendement1.1, rendement1.2))) %>%
+  select(-c(rendement1.1, rendement1.2)) %>% add_column(brix = NA) %>% 
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
-# lire les données de 2023 du CE (au-dessus de latéral) ------------------------
-CE_h1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
-                            sheet = 'Prise de données', range = 'B14:Z44',
-                            col_types = c('date', rep('numeric', 24)),
-                            col_names = noms_col_CE) %>% 
-  select(-c(comp1, r1, r2, var1, comp2, r3, r4, var2, compteur1, volume1, 
-            compteur2, variation1, volume2, variation2, compteur3, volume3, 
-            rendement3, variation3, compteur4, volume4, rendement4, 
-            variation4)) %>% 
-  filter(!is.na(rendement1) | !is.na(rendement2)) %>% 
-  mutate(datetime = date,
-         date = as_date(date),
-         t = factor("h1.5"),
-         h = 20.32, # Entre 6 et 12", donc j'utilise la moyenne de 8" ou 20.32
-         # TR - Je devrais inclure une erreur dans l'analyse
-         année = factor('2023'),
-         systeme = factor('F'),
-         ligne = factor('F'),
-         site = factor('CE'),
-         rendement = rowMeans(select(., rendement1, rendement2))) %>%
-  select(-c(rendement1, rendement2)) %>% add_column(brix = NA) %>% 
-  relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
-
-# lire les données de 2022 du CE (en-dessous de latéral) -----------------------
-CE_b1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
-                            sheet = 'Prise de données', range = 'B14:Z52',
-                            col_types = c('date', rep('numeric', 24)),
-                            col_names = noms_col_CE) %>% 
-  select(-c(comp1, r1, r2, var1, comp2, r3, r4, var2, compteur1, volume1, 
-            rendement1, variation1, compteur2, volume2, rendement2, variation2,
-            compteur3, volume3, variation3, compteur4, volume4, variation4)) %>% 
-  filter(!is.na(rendement3) | !is.na(rendement4)) %>% 
-  mutate(datetime = date, 
-         date = as_date(date),
-         t = factor("b1.5"),
-         h = -20.32, # Entre 6 et 12", donc j'utilise la moyenne de 8" ou -20.32 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
-         année = factor("2023"),
-         systeme = factor("F"),
-         ligne = factor("F"),
-         site = factor("CE"),
-         rendement = rowMeans(select(., rendement3, rendement4))) %>%
-  select(-c(rendement3, rendement4)) %>% add_column(brix = NA) %>% 
-  relocate(année, site, systeme, t, h, date, datetime, rendement, brix)
-
-# lire les données de 2022 du CE (en-dessous de latéral) -----------------------
-CE_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
+# lire les données de 2023 du CE (en dessus de latéral) ------------------------
+F1_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
                                  sheet = 'Prise de données', range = 'B14:Z44',
                                  col_types = c('date', rep('numeric', 24)),
                                  col_names = noms_col_CE) %>% 
-  select(-c(comp1, r1, r2, var1, comp2, r3, r4, var2, compteur1, volume1, 
-            rendement1, variation1, compteur2, volume2, rendement2, variation2,
-            compteur3, volume3, variation3, compteur4, volume4, variation4)) %>% 
-  filter(!is.na(rendement3) | !is.na(rendement4)) %>% 
-  mutate(datetime = date, 
+  select(date, rendement1.1, rendement1.2) %>% 
+  filter(!is.na(rendement1.1) | !is.na(rendement1.2)) %>% 
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")),
          date = as_date(date),
          t = factor("b1.5"),
-         h = -20.32,  # Entre 6 et 12", donc j'utilise la moyenne de 8" ou -20.32 cm
+         h = -22.86, # Entre 6 et 12", donc j'utilise la moyenne de -9" ou -22.86 cm
+         # TR - Je devrais inclure une erreur dans l'analyse
+         année = factor('2023'),
+         systeme = factor('F'),
+         ligne = factor('F1'),
+         site = factor('CE'),
+         rendement = rowMeans(select(., rendement1.1, rendement1.2))) %>%
+  select(-c(rendement1.1, rendement1.2)) %>% add_column(brix = NA) %>% 
+  relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
+
+# lire les données de 2022 du CE (au dessous de latéral) -----------------------
+F2_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
+                                 sheet = 'Prise de données', range = 'B14:Z52',
+                                 col_types = c('date', rep('numeric', 24)),
+                                 col_names = noms_col_CE) %>% 
+  select(date, rendement2.1, rendement2.2) %>% 
+  filter(!is.na(rendement2.1) | !is.na(rendement2.2)) %>% 
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), 
+         date = as_date(date),
+         t = factor("h1.5"),
+         h = 22.86, # Entre 6 et 12", donc j'utilise la moyenne de 9" ou 22.86 cm
+         # TR - Je devrais inclure une erreur dans l'analyse
+         année = factor("2022"),
+         systeme = factor("F"),
+         ligne = factor("F2"),
+         site = factor("CE"),
+         rendement = rowMeans(select(., rendement2.1, rendement2.2))) %>%
+  select(-c(rendement2.1, rendement2.2)) %>% add_column(brix = NA) %>% 
+  relocate(année, site, systeme, t, h, date, datetime, rendement, brix)
+
+# lire les données de 2023 du CE (au dessous de latéral) -----------------------
+F2_h1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
+                                 sheet = 'Prise de données', range = 'B14:Z44',
+                                 col_types = c('date', rep('numeric', 24)),
+                                 col_names = noms_col_CE) %>% 
+  select(date, rendement2.1, rendement2.2) %>% 
+  filter(!is.na(rendement2.1) | !is.na(rendement2.2)) %>% 
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), 
+         date = as_date(date),
+         t = factor("h1.5"),
+         h = 22.86,  # Entre 6 et 12", donc j'utilise la moyenne de 9" ou 22.86 cm
          # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2023"),
          systeme = factor('F'),
-         ligne = factor("F"),
+         ligne = factor("F2"),
          site = factor("CE"),
-         rendement = rowMeans(select(., rendement3, rendement4))) %>%
-  select(-c(rendement3, rendement4)) %>% add_column(brix = NA) %>% 
+         rendement = rowMeans(select(., rendement2.1, rendement2.2))) %>%
+  select(-c(rendement2.1, rendement2.2)) %>% add_column(brix = NA) %>% 
+  relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
+
+# lire les données de 2022 du CE (en-dessous de latéral) -----------------------
+F3_b1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
+                                 sheet = 'Prise de données', range = 'B14:Z52',
+                                 col_types = c('date', rep('numeric', 24)),
+                                 col_names = noms_col_CE) %>% 
+  select(date, rendement3.1, rendement3.2) %>% 
+  filter(!is.na(rendement3.1) | !is.na(rendement3.2)) %>% 
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), 
+         date = as_date(date),
+         t = factor("b1.5"),
+         h = -22.86, # Entre 6 et 12", donc j'utilise la moyenne de 9" ou -22.86 cm
+         # TR - Je devrais inclure une erreur dans l'analyse
+         année = factor("2022"),
+         systeme = factor("F"),
+         ligne = factor("F3"),
+         site = factor("CE"),
+         rendement = rowMeans(select(., rendement3.1, rendement3.2))) %>%
+  select(-c(rendement3.1, rendement3.2)) %>% add_column(brix = NA) %>% 
+  relocate(année, site, systeme, t, h, date, datetime, rendement, brix)
+
+# lire les données de 2023 du CE (en-dessous de latéral) -----------------------
+F3_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
+                                 sheet = 'Prise de données', range = 'B14:Z44',
+                                 col_types = c('date', rep('numeric', 24)),
+                                 col_names = noms_col_CE) %>% 
+  select(date, rendement3.1, rendement3.2) %>% 
+  filter(!is.na(rendement3.1) | !is.na(rendement3.2)) %>% 
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), 
+         date = as_date(date),
+         t = factor("b1.5"),
+         h = -22.86,  # Entre 6 et 12", donc j'utilise la moyenne de 9" ou -22.86 cm
+         # TR - Je devrais inclure une erreur dans l'analyse
+         année = factor("2023"),
+         systeme = factor('F'),
+         ligne = factor("F3"),
+         site = factor("CE"),
+         rendement = rowMeans(select(., rendement3.1, rendement3.2))) %>%
+  select(-c(rendement3.1, rendement3.2)) %>% add_column(brix = NA) %>% 
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
 # combiner les données de St-Norbert (SN) et du Club d'encadrement téchnique en 
 # acériculture de l'est (CE) ---------------------------------------------------
-d <- rbind(d, CE_b1_2022, CE_h1_2022, CE_b1_2023, CE_h1_2023)
-# TR - Je dois encore vérifier que ces données sont bien intégrées!!!
+d <- rbind(d, F1_h1_2022, F1_b1_2023, F2_h1_2022, F2_h1_2023, F3_b1_2022, F3_b1_2023)
 
 # re-définir les noms des colonnes ---------------------------------------------
 noms_col_SN_2023 <- c("date", "temps", "responsable", "periode", "A_AC_h3", 
@@ -648,9 +678,10 @@ d1 <- full_join(tmp1, tmp2, by = c("année", "date", "datetime", "systeme",
 # nettoyer l'espace de travail -------------------------------------------------
 rm(A_b3_2023, A_b3_2024, A_h2_2024, A_h3_2023, atp, atp_2023, atp_2024, 
    B_b1_2023, B_b3_2023, B_b3_2024, B_h3_2024, brix, brix_2023, brix_2024, 
-   C_b2_2024, C_h1_2023, C_h3_2023, C_h3_2024, CE_b1_2022, CE_b1_2023, 
-   CE_h1_2022, CE_h1_2023, E_b1_2023, E_b2_2024, E_b3_2023, E_b3_2024, 
-   E_h1_2023, E_h2_2024, E_h3_2023, E_h3_2024, ph, ph_2023, ph_2024, sc, 
-   sc_2023, sc_2024, tmp1, tmp2, nom_fichier_CE_2022, nom_fichier_CE_2023, 
-   nom_fichier_SN_2023, nom_fichier_SN_2024, noms_col_CE, noms_col_SN, 
-   noms_col_SN_2023, noms_col_SN_2024, ligne, systeme, traitement, types_col_SN)
+   C_b2_2024, C_h1_2023, C_h3_2023, C_h3_2024, E_b1_2023, E_b2_2024, E_b3_2023, 
+   E_b3_2024, E_h1_2023, E_h2_2024, E_h3_2023, E_h3_2024, F1_h1_2022, 
+   F1_h1_2023, F2_h1_2022, F2_h1_2023, F3_b1_2022, F3_b1_2023, ph, ph_2023, 
+   ph_2024, sc, sc_2023, sc_2024, tmp1, tmp2, nom_fichier_CE_2022, 
+   nom_fichier_CE_2023, nom_fichier_SN_2023, nom_fichier_SN_2024, 
+   noms_col_CE, noms_col_SN, noms_col_SN_2023, noms_col_SN_2024, ligne, systeme, 
+   traitement, types_col_SN)
