@@ -10,34 +10,58 @@ if (existsFunction('openxlsx')) library('createWorkbook')
 
 # clé --------------------------------------------------------------------------
 # il avait quatre hauteurs différentes dans les traitements :
-#     24" au dessus  du latéral  = _h2        # Contrôle A, C et E 
+#     24" au dessus  du latéral  = _h3        # Contrôle A, C et E 
 #      4" au dessus  du latéral  = _h1        # Traitement C et E1 
 #      4" en dessous du latéral  = _b1        # Contrôle B et Traitement E2
-#     24" en dessous du latéral  = _b2        # Traitement A, B, E3
+#     24" en dessous du latéral  = _b3        # Traitement A, B, E3
 
-# lire les données du système Smartrek -----------------------------------------
-file_name <- '../données/vacuum/vac_CDL_15mars_14avril_TDC.xlsx'
-vide <- read_excel(path = file_name, sheet = "Données Brutes") %>% 
+# initier les noms des fichiers ------------------------------------------------
+file_name_2023 <- '../données/vacuum/vac_CDL_2023_15mars_14avril_TDC.xlsx'
+file_name_2024 <- '../données/vacuum/vac_CDL_2024_27février_12avril_TDC.xlsx'
+
+# lire les données du système Smartrek en 2023 et 2024 -------------------------
+tmp_23 <- read_excel(path = file_name_2023, sheet = "Données Brutes") %>% 
   rename(datetime = `Date et Heure UTC`, 
          vide = `Vacuum Entaille`, 
          temp = Température) %>%
-  mutate(ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, 70120*4, 4)],
-         endroit = unlist(str_split(Capteur, pattern = ' '))[seq(2, 70120*4, 4)],
-         t       = unlist(str_split(Capteur, pattern = ' '))[seq(3, 70120*4, 4)],
-         arbre   = unlist(str_split(Capteur, pattern = ' '))[seq(4, 70120*4, 4)]) %>%
+  mutate(ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, dim(tmp_23)[1]*4, 4)],
+         endroit = unlist(str_split(Capteur, pattern = ' '))[seq(2, dim(tmp_23)[1]*4, 4)],
+         t       = unlist(str_split(Capteur, pattern = ' '))[seq(3, dim(tmp_23)[1]*4, 4)],
+         arbre   = unlist(str_split(Capteur, pattern = ' '))[seq(4, dim(tmp_23)[1]*4, 4)]) %>%
   select(ligne, endroit, t, arbre, datetime, temp, vide) %>%
-  mutate(t = case_when(t == "24+" ~ "h2",
+  mutate(t = case_when(t == "24+" ~ "h3",
                        t == "4+" ~ "h1",
                        t == "4-" ~ "b1",
-                       t == "24-" ~ "b2")) %>%
-  mutate(h = case_when(t == "h2" ~ 60.96,
+                       t == "24-" ~ "b3")) %>%
+  mutate(h = case_when(t == "h3" ~ 60.96,
                        t == "h1" ~ 10.16,
                        t == "b1" ~ -10.16,
-                       t == "b2" ~ - 60.96))
+                       t == "b3" ~ -60.96))
+tmp_24 <- read_excel(path = file_name_2024, sheet = "Données Brutes") %>% 
+  rename(datetime = `Date et Heure UTC`, 
+         vide = `Vacuum Entaille`, 
+         temp = Température) %>%
+  mutate(ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, dim(tmp_24)[1]*4, 4)],
+         endroit = unlist(str_split(Capteur, pattern = ' '))[seq(2, dim(tmp_24)[1]*4, 4)],
+         t       = unlist(str_split(Capteur, pattern = ' '))[seq(3, dim(tmp_24)[1]*4, 4)],
+         arbre   = unlist(str_split(Capteur, pattern = ' '))[seq(4, dim(tmp_24)[1]*4, 4)]) %>%
+  select(ligne, endroit, t, arbre, datetime, temp, vide) %>%
+  mutate(t = case_when(t == "24+" ~ "h3",
+                       t == "12+" ~ "h2",
+                       t == "12-" ~ "b2",
+                       t == "24-" ~ "b3")) %>%
+  mutate(h = case_when(t == "h3" ~ 60.96,
+                       t == "h1" ~ 30.48,
+                       t == "b1" ~ -30.48,
+                       t == "b3" ~ -60.96))
 
-# exclure les données avant et après la récolte (2023-03-21 à 2023-04-16) ------
-vide <- vide %>% filter(datetime > as_datetime("2023-03-21") & 
+# exclure les données avant et après la récolte (2023-03-21 à 2023-04-16 ainsi 
+# que 2023-02-27 et 2024-04-11) ------------------------------------------------
+tmp_23 <- tmp_23 %>% filter(datetime > as_datetime("2023-03-21") & 
                           datetime < as_datetime("2023-04-16"))
+tmp_24 <- tmp_24 %>% filter(datetime > as_datetime("2024-02-27") & 
+                              datetime < as_datetime("2024-04-11"))
+# TR - Je me suis rendu ici pour le mettre à jour avec les données de 2024.
 
 # enlève tout les données avec un sous-vide inférieur à -26 "Hg ----------------
 vide <- vide %>% filter(vide < -26)
