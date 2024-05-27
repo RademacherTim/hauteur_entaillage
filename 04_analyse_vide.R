@@ -11,68 +11,229 @@ if(!existsFunction('brms')) library('brms')
 if(!existsFunction('pp_check')) library('rstanarm')
 
 # lire les données de vide -----------------------------------------------------
-source("03_données_de_vide.R")
+if(!exists("v_h")) source("03_données_de_vide.R")
 
-# faire une graphique des données du vide à l'entaille -------------------------
-par(mfrow = c(1, 1))
+# Graphique des données du vide à l'entaille en 2023 ---------------------------
+par(mfrow = c(2, 2))
 par(mar = c (5, 5, 1, 1))
-plot(x = v_h$heure[v_h$ligne == "A1" & v_h$endroit == "début" & v_h$t == "h2"],
-     y = v_h$vide[v_h$ligne == "A1" & v_h$endroit == "début" & v_h$t == "h2"], typ = "l",
+con <- v_h$année == 2023 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "h3"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
      xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
-     ylim = c(-29, -26), col = "#008837")
-lines(v_h$heure[v_h$ligne == "A1" & v_h$endroit == "fin" & v_h$t == "h2"],
-      y = v_h$vide[v_h$ligne == "A1" & v_h$endroit == "fin" & v_h$t == "h2"],
-      col = "#008837", lty = 2)
-lines(v_h$heure[v_h$ligne == "A1" & v_h$endroit == "début" & v_h$t == "b2"],
-      y = v_h$vide[v_h$ligne == "A1" & v_h$endroit == "début" & v_h$t == "b2"],
-      col = "#7b3294")
-lines(v_h$heure[v_h$ligne == "A1" & v_h$endroit == "fin" & v_h$t == "b2"],
-      y = v_h$vide[v_h$ligne == "A1" & v_h$endroit == "fin" & v_h$t == "b2"],
-      col = "#7b3294", lty = 2)
-lines(v_h$heure[v_h$ligne == "B1" & v_h$endroit == "début" & v_h$t == "b1"],
-      y = v_h$vide[v_h$ligne == "B1" & v_h$endroit == "début" & v_h$t == "b1"],
-      col = "#c2a5cf")
-lines(v_h$heure[v_h$ligne == "B1" & v_h$endroit == "fin" & v_h$t == "b1"],
-      y = v_h$vide[v_h$ligne == "B1" & v_h$endroit == "fin" & v_h$t == "b1"],
-      col = "#c2a5cf", lty = 2)
-lines(v_h$heure[v_h$ligne == "C1" & v_h$endroit == "début" & v_h$t == "h1"],
-      y = v_h$vide[v_h$ligne == "C1" & v_h$endroit == "début" & v_h$t == "h1"],
-      col = "#a6dba0")
-lines(v_h$heure[v_h$ligne == "C1" & v_h$endroit == "fin" & v_h$t == "h1"],
-      y = v_h$vide[v_h$ligne == "C1" & v_h$endroit == "fin" & v_h$t == "h1"],
-      col = "#a6dba0", lty = 2)
-lines(v_h$heure[v_h$ligne == "Ectr" & v_h$endroit == "fin" & v_h$t == "h2"],
-      y = v_h$vide[v_h$ligne == "Ectr" & v_h$endroit == "fin" & v_h$t == "h2"],
-      col = "#008837", lty = 2)
-lines(v_h$heure[v_h$ligne == "Ettr1" & v_h$endroit == "fin" & v_h$t == "h1"],
-      y = v_h$vide[v_h$ligne == "Ettr1" & v_h$endroit == "fin" & v_h$t == "h1"],
-      col = "#a6dba0", lty = 2)
-lines(v_h$heure[v_h$ligne == "Ettr2" & v_h$endroit == "fin" & v_h$t == "b1"],
-      y = v_h$vide[v_h$ligne == "Ettr2" & v_h$endroit == "fin" & v_h$t == "b1"],
-      col = "#c2a5cf", lty = 2)
-lines(v_h$heure[v_h$ligne == "Ettr3" & v_h$endroit == "fin" & v_h$t == "b2"],
-      y = v_h$vide[v_h$ligne == "Ettr3" & v_h$endroit == "fin" & v_h$t == "b2"],
-      col = "#7b3294", lty = 2)
+     ylim = c(-29, -26), col = "#a6dba0")
+con <- v_h$année == 2023 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#a6dba0", lty = 2)
+con <- v_h$année == 2023 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "b3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#c2a5cf")
+con <- v_h$année == 2023 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#c2a5cf", lty = 2)
+text(x = as_datetime("2023-04-14"), y = -29, labels = "Ligne A")
 
-# change le traitement pour que ce soit un facteur ----
-v_h %>% mutate(ligne   = factor(ligne),
-               t       = factor(t),
-               endroit = factor(endroit),
-               heure   = factor(heure))
+# Système B 2023 ---------------------------------------------------------------
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2023 & 
+  v_h$ligne == "B1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "b1"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#40004b")
+con <- v_h$année == 2023 & 
+  v_h$ligne == "B1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b1"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#40004b", lty = 2)
+text(x = as_datetime("2023-04-14"), y = -29, labels = "Ligne B")
+legend(x = as_datetime("2023-03-27"), y = -27.7,
+       box.lty = 0, legend = rep(" ", 6), 
+       col = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       pt.bg = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       lty = 1, title = "début")
+legend(x = as_datetime("2023-03-31"), y = -27.7,
+       box.lty = 0, legend = c("+24\"",  "+12\"",  "  +4\"", "   -4\"", "-12\"", 
+                               " -24\""), 
+       col = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       pt.bg = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       lty = 2, title = "fin")
 
-# TR - Quelle est la différence entre vide et vide_ligne dans les données???
+# Système C 2023 ---------------------------------------------------------------
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2023 & 
+  v_h$ligne == "C1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "h1"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#a6dba0")
+con <- v_h$année == 2023 & 
+  v_h$ligne == "C1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h1"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#a6dba0", lty = 2)
+text(x = as_datetime("2023-04-14"), y = -29, labels = "Ligne C")
+
+# Système E 2023 ---------------------------------------------------------------
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2023 & 
+  v_h$ligne == "Ectr" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h3"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#a6dba0", lty = 2)
+con <- v_h$année == 2023 & 
+  v_h$ligne == "Ettr1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h1"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#00441b", lty = 2)
+con <- v_h$année == 2023 & 
+  v_h$ligne == "Ettr2" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b1"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#40004b", lty = 2)
+con <- v_h$année == 2023 & 
+  v_h$ligne == "Ettr3" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#c2a5cf", lty = 2)
+text(x = as_datetime("2023-04-14"), y = -29, labels = "Ligne E")
+
+
+# Graphique des données du vide à l'entaille en 2024 ---------------------------
+par(mfrow = c(2, 2))
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2024 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "h2"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#1b7837")
+con <- v_h$année == 2024 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h2"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#1b7837", lty = 2)
+con <- v_h$année == 2024 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "b3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#c2a5cf")
+con <- v_h$année == 2024 & 
+  v_h$ligne == "A1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#c2a5cf", lty = 2)
+text(x = as_datetime("2024-04-07"), y = -29, labels = "Ligne A")
+legend(x = as_datetime("2024-02-27"), y = -27.8,
+       box.lty = 0, legend = rep(" ", 6), bg = "transparent",
+       col = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       pt.bg = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       lty = 1, title = "début")
+legend(x = as_datetime("2024-03-04"), y = -27.8, bg = "transparent",
+       box.lty = 0, legend = c("+24\"",  "+12\"",  "  +4\"", "   -4\"", "-12\"", 
+                               " -24\""), 
+       col = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       pt.bg = c("#a6dba0", "#1b7837", "#00441b", "#40004b", "#762a83", "#c2a5cf"),
+       lty = 2, title = "fin")
+
+# Système B (2024) -------------------------------------------------------------
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2024 & 
+  v_h$ligne == "B1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "h3"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#a6dba0")
+con <- v_h$année == 2024 & 
+  v_h$ligne == "B1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#a6dba0", lty = 2)
+text(x = as_datetime("2024-04-07"), y = -29, labels = "Ligne B")
+
+# Système C (2024) -------------------------------------------------------------
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2024 & 
+  v_h$ligne == "C1" & 
+  v_h$endroit == "début" & 
+  v_h$t == "b2"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#762a83")
+con <- v_h$année == 2024 & 
+  v_h$ligne == "C1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b2"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#762a83", lty = 2)
+text(x = as_datetime("2024-04-07"), y = -29, labels = "Ligne C")
+
+
+# Système E (2024) -------------------------------------------------------------
+par(mar = c (5, 5, 1, 1))
+con <- v_h$année == 2024 & 
+  v_h$ligne == "Ectr" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h2"
+plot(x = v_h$heure[con],
+     y = v_h$vide[con], typ = "l",
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     ylim = c(-29, -26), col = "#1b7837", lty = 2)
+con <- v_h$année == 2024 & 
+  v_h$ligne == "Ettr1" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "h3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#a6dba0", lty = 2)
+con <- v_h$année == 2024 & 
+  v_h$ligne == "Ettr2" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b2"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#762a83", lty = 2)
+con <- v_h$année == 2024 & 
+  v_h$ligne == "Ettr3" & 
+  v_h$endroit == "fin" & 
+  v_h$t == "b3"
+lines(x = v_h$heure[con], y = v_h$vide[con], col = "#c2a5cf", lty = 2)
+text(x = as_datetime("2024-04-07"), y = -29, labels = "Ligne E")
+
+# Change le traitement pour que ce soit un facteur -----------------------------
+v_h <- v_h %>% 
+  mutate(année   = factor(année),
+         ligne   = factor(ligne),
+         t       = factor(t),
+         endroit = factor(endroit),
+         heure   = factor(heure))
+
 # relation entre l'hauteur de l'entaille et le niveau de vide ------------------
 mod_v <- brms::brm(brms::bf(vide ~ 
-                              (1 | t) +             # traitement
-                              (1 | endroit) + # début et fin de ligne
-                              (1 | heure)),# +   # différence par heure
-                              #(1 | ligne)), # différence entre systèmes
-                      data = v_h,
+                              (1 | t) +#       # traitement
+                              #(1 | endroit) + # début et fin de ligne
+                              (1 | heure) +   # différence par heure
+                              (1 | ligne)),   # différence entre systèmes
+                      data = v_h %>% select(année, t, heure),
                       family = gaussian(), 
                       prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
                                 set_prior('exponential(1)', class = 'sigma')),
-                                #set_prior('normal(0, 2)', class = 'b')),
-                      cores = 4, chains = 4,
+                      cores = 1, chains = 1,
                       control = list(max_treedepth = 11),
                       iter = 6000,
                       seed = 1353,
@@ -89,7 +250,7 @@ summary(mod_v)
 ranef(mod_v)$ligne [, , 'Intercept']
 ranef(mod_v)$t [, , 'Intercept']
 ranef(mod_v)$heure [, , 'Intercept']
-ranef(mod_v)$endroit [, , 'Intercept']
+#ranef(mod_v)$endroit [, , 'Intercept']
 
 # ============================================================================ #
 # Ce qui suit traite les données des têtes de ligne, des extracteurs et des 

@@ -8,12 +8,22 @@ if (!existsFunction('%>%')) library ('tidyverse')
 if (!existsFunction('str_squish')) library('stringr')
 if (existsFunction('openxlsx')) library('createWorkbook')
 
-# clé --------------------------------------------------------------------------
-# il avait quatre hauteurs différentes dans les traitements :
+# Clé pour les traitements -----------------------------------------------------
+# il avait quatre hauteurs différentes dans les traitements en 2023 et 2024:
+
+# 2023 
+#-------------------------------------------------------------------------------
 #     24" au dessus  du latéral  = _h3        # Contrôle A, C et E 
 #      4" au dessus  du latéral  = _h1        # Traitement C et E1 
 #      4" en dessous du latéral  = _b1        # Contrôle B et Traitement E2
 #     24" en dessous du latéral  = _b3        # Traitement A, B, E3
+
+# 2024
+#-------------------------------------------------------------------------------
+#     24" au dessus  du latéral  = _h3        # Contrôle B, Traitement C et E1 
+#     12" au dessus  du latéral  = _h2        # Traitement A et Contrôle E 
+#     12" en dessous du latéral  = _b2        # Contrôle C et Traitement E2
+#     24" en dessous du latéral  = _b3        # Contrôle A, Traitement B et E3
 
 # initier les noms des fichiers ------------------------------------------------
 file_name_2023 <- '../données/vacuum/vac_CDL_2023_15mars_14avril_TDC.xlsx'
@@ -23,12 +33,14 @@ file_name_2024 <- '../données/vacuum/vac_CDL_2024_27février_12avril_TDC.xlsx
 tmp_23 <- read_excel(path = file_name_2023, sheet = "Données Brutes") %>% 
   rename(datetime = `Date et Heure UTC`, 
          vide = `Vacuum Entaille`, 
-         temp = Température) %>%
-  mutate(ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, dim(tmp_23)[1]*4, 4)],
+         temp = Température) 
+tmp_23 <- tmp_23 %>%
+  mutate(année = 2023,
+         ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, dim(tmp_23)[1]*4, 4)],
          endroit = unlist(str_split(Capteur, pattern = ' '))[seq(2, dim(tmp_23)[1]*4, 4)],
          t       = unlist(str_split(Capteur, pattern = ' '))[seq(3, dim(tmp_23)[1]*4, 4)],
          arbre   = unlist(str_split(Capteur, pattern = ' '))[seq(4, dim(tmp_23)[1]*4, 4)]) %>%
-  select(ligne, endroit, t, arbre, datetime, temp, vide) %>%
+  select(année, ligne, endroit, t, arbre, datetime, temp, vide) %>%
   mutate(t = case_when(t == "24+" ~ "h3",
                        t == "4+" ~ "h1",
                        t == "4-" ~ "b1",
@@ -40,19 +52,21 @@ tmp_23 <- read_excel(path = file_name_2023, sheet = "Données Brutes") %>%
 tmp_24 <- read_excel(path = file_name_2024, sheet = "Données Brutes") %>% 
   rename(datetime = `Date et Heure UTC`, 
          vide = `Vacuum Entaille`, 
-         temp = Température) %>%
-  mutate(ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, dim(tmp_24)[1]*4, 4)],
+         temp = Température) 
+tmp_24 <- tmp_24 %>%
+  mutate(année = 2024,
+         ligne   = unlist(str_split(Capteur, pattern = ' '))[seq(1, dim(tmp_24)[1]*4, 4)],
          endroit = unlist(str_split(Capteur, pattern = ' '))[seq(2, dim(tmp_24)[1]*4, 4)],
          t       = unlist(str_split(Capteur, pattern = ' '))[seq(3, dim(tmp_24)[1]*4, 4)],
          arbre   = unlist(str_split(Capteur, pattern = ' '))[seq(4, dim(tmp_24)[1]*4, 4)]) %>%
-  select(ligne, endroit, t, arbre, datetime, temp, vide) %>%
+  select(année, ligne, endroit, t, arbre, datetime, temp, vide) %>%
   mutate(t = case_when(t == "24+" ~ "h3",
                        t == "12+" ~ "h2",
                        t == "12-" ~ "b2",
                        t == "24-" ~ "b3")) %>%
   mutate(h = case_when(t == "h3" ~ 60.96,
-                       t == "h1" ~ 30.48,
-                       t == "b1" ~ -30.48,
+                       t == "h2" ~ 30.48,
+                       t == "b2" ~ -30.48,
                        t == "b3" ~ -60.96))
 
 # exclure les données avant et après la récolte (2023-03-21 à 2023-04-16 ainsi 
@@ -61,14 +75,15 @@ tmp_23 <- tmp_23 %>% filter(datetime > as_datetime("2023-03-21") &
                           datetime < as_datetime("2023-04-16"))
 tmp_24 <- tmp_24 %>% filter(datetime > as_datetime("2024-02-27") & 
                               datetime < as_datetime("2024-04-11"))
-# TR - Je me suis rendu ici pour le mettre à jour avec les données de 2024.
+vide <- rbind(tmp_23, tmp_24); rm(tmp_23, tmp_24)
 
 # enlève tout les données avec un sous-vide inférieur à -26 "Hg ----------------
 vide <- vide %>% filter(vide < -26)
 
 # calcule les moyennes horaires ------------------------------------------------
 v_h <- vide %>% 
-  group_by(ligne, 
+  group_by(année,
+           ligne, 
            t,
            endroit,
            heure = floor_date(datetime, "1 hour")) %>%
@@ -197,38 +212,38 @@ par(mfrow = c(2, 2))
 plot(y = -d1$vide[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A1"],
      x = d1$datetime[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A1"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A1"],
        x = d1$datetime[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A1"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne A1")
 plot(y = -d1$vide[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A2"],
      x = d1$datetime[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A2"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A2"],
        x = d1$datetime[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A2"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne A2")
 plot(y = -d1$vide[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A3"],
      x = d1$datetime[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A3"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A3"],
        x = d1$datetime[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A3"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne A3")
 plot(y = -d1$vide[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A4"],
      x = d1$datetime[d1$système == "A" & d1$traitement == "CTRL" & d1$ligne == "A4"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A4"],
        x = d1$datetime[d1$système == "A" & d1$traitement == "TTM" & d1$ligne == "A4"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne A4")
 
 # graphique des données brutes du système B ------------------------------------
@@ -237,38 +252,38 @@ par(mfrow = c(2, 2))
 plot(y = -d1$vide[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B1"],
      x = d1$datetime[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B1"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#c2a5cf")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#40004b")
 lines (y = -d1$vide[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B1"],
        x = d1$datetime[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B1"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne B1")
 plot(y = -d1$vide[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B2"],
      x = d1$datetime[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B2"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#c2a5cf")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#40004b")
 lines (y = -d1$vide[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B2"],
        x = d1$datetime[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B2"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne B2")
 plot(y = -d1$vide[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B3"],
      x = d1$datetime[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B3"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#c2a5cf")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#40004b")
 lines (y = -d1$vide[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B3"],
        x = d1$datetime[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B3"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne B3")
 plot(y = -d1$vide[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B4"],
      x = d1$datetime[d1$système == "B" & d1$traitement == "CTRL" & d1$ligne == "B4"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#c2a5cf")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#40004b")
 lines (y = -d1$vide[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B4"],
        x = d1$datetime[d1$système == "B" & d1$traitement == "TTM" & d1$ligne == "B4"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne B4")
 
 # graphique des données brutes du système C ------------------------------------
@@ -277,38 +292,38 @@ par(mfrow = c(2, 2))
 plot(y = -d1$vide[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C1"],
      x = d1$datetime[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C1"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C1"],
        x = d1$datetime[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C1"], 
-       col = "#a6dba0")
+       col = "#00441b")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne C1")
 plot(y = -d1$vide[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C2"],
      x = d1$datetime[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C2"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C2"],
        x = d1$datetime[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C2"], 
-       col = "#a6dba0")
+       col = "#00441b")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne C2")
 plot(y = -d1$vide[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C3"],
      x = d1$datetime[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C3"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C3"],
        x = d1$datetime[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C3"], 
-       col = "#a6dba0")
+       col = "#00441b")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne C3")
 plot(y = -d1$vide[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C4"],
      x = d1$datetime[d1$système == "C" & d1$traitement == "CTRL" & d1$ligne == "C4"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C4"],
        x = d1$datetime[d1$système == "C" & d1$traitement == "TTM" & d1$ligne == "C4"], 
-       col = "#a6dba0")
+       col = "#00441b")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne C4")
 
 # graphique des données brutes du système E ------------------------------------
@@ -317,20 +332,20 @@ par(mfrow = c(2, 1))
 plot(y = -d1$vide[d1$système == "E" & d1$traitement == "CTRL" & d1$ligne == "E1"],
      x = d1$datetime[d1$système == "E" & d1$traitement == "CTRL" & d1$ligne == "E1"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#008837")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#a6dba0")
 lines (y = -d1$vide[d1$système == "E" & d1$traitement == "TTM1" & d1$ligne == "E1"],
        x = d1$datetime[d1$système == "E" & d1$traitement == "TTM1" & d1$ligne == "E1"], 
-       col = "#a6dba0")
+       col = "#00441b")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne E1")
 plot(y = -d1$vide[d1$système == "E" & d1$traitement == "TTM2" & d1$ligne == "E2"],
      x = d1$datetime[d1$système == "E" & d1$traitement == "TTM2" & d1$ligne == "E2"], typ = "l",
      ylim = c(-29, -26),
-     xlab = 'date', ylab = "vide", las = 1,
-     col = "#c2a5cf")
+     xlab = "Date et heure", ylab = "Sous-vide (\" Hg)", las = 1,
+     col = "#40004b")
 lines (y = -d1$vide[d1$système == "E" & d1$traitement == "TTM3" & d1$ligne == "E2"],
        x = d1$datetime[d1$système == "E" & d1$traitement == "TTM3" & d1$ligne == "E2"], 
-       col = "#7b3294")
+       col = "#c2a5cf")
 text(x = as_datetime("2023-04-14"), y = -28.8, labels = "Ligne E2")
 
 
@@ -440,7 +455,6 @@ d_journalier <- d_horaire %>%
             t_max = max(t_max, na.rm = TRUE),
             temp = mean(temp, na.rm = TRUE),
             .groups = 'drop')
-
 # TR - Ajouter les dégrès jours et l'indice SBB --------------------------------
 
 
@@ -471,5 +485,6 @@ d_horaire %>% group_by(h) %>%
             .groups = "drop")
 
 # faire le ménage --------------------------------------------------------------
-rm(tmp, struc, a, composantes, date_fin, dates, dir, double, f, file_name, ligne, 
-   lignes, noms_dossiers, noms_fichiers, s, systèmes, t1, t2)
+rm(tmp, struc, a, composantes, date_fin, dates, dir, double, f, file_name_2023, 
+   file_name_2024, ligne, lignes, noms_dossiers, noms_fichiers, s, systèmes, 
+   t1, t2)

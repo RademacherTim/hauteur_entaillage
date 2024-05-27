@@ -31,14 +31,14 @@ ligne <- c("AC", "AT", "BC", "BT", "CC", "CT", "EC", "E1", "E2", "E3")
 
 # Couleurs pour les graphiques -------------------------------------------------
 #    t         h (cm)       couleur             hexcode         pch
-#    h3        +60.96       vert très foncé     "#00441b"       2
-#    h2        +30.48       vert foncé          "#1b7837"       24
+#    h3        +60.96       vert très foncé     "#00441b"       24
+#    h2        +30.48       vert foncé          "#1b7837"       2
 #    h1.5      +20.32       vert                "#5aae61"       21
 #    h1        +10.16       vert pale           "#a6dba0"       1
 #    b1        -10.16       mauve pale          "#c2a5cf"       5
 #    b1.5      -20.32       mauve               "#9970ab"       23
-#    b2        -30.48       mauve foncé         "#762a83"       25
-#    b3        -60.96       mauve très foncé    "#40004b"       6
+#    b2        -30.48       mauve foncé         "#762a83"       6
+#    b3        -60.96       mauve très foncé    "#40004b"       25
 
 # initialiser les noms des fichiers --------------------------------------------
 nom_fichier_SN_2023 <- "../données/Compilation donnée érablière - 2023.xlsm"
@@ -55,9 +55,9 @@ info_SN1 <- readxl::read_excel(path = nom_fichier_SN_2023,
   add_column(systeme, traitement, ligne, .before = 1) %>% 
   select(-name) %>% 
   add_column(t = c("h3", "b3", "b1", "b3", "h3", "h1", "h3", "h1", "b1", "b3"),
-             colour = c("#00441b", "#40004b", "#c2a5cf", "#40004b", "#00441b", 
-                        "#a6dba0", "#00441b", "#a6dba0", "#c2a5cf", "#40004b"),
-             sym = c(2, 6, 5, 6, 2, 1, 2, 1, 5, 6)) %>%
+             colour = c("#a6dba0", "#c2a5cf", "#40004b", "#c2a5cf", "#a6dba0", 
+                        "#00441b", "#a6dba0", "#00441b", "#40004b", "#c2a5cf"),
+             sym = c(24, 25, 5, 25, 24, 1, 24, 1, 5, 25)) %>%
   mutate(année = 2023)
 info_SN2 <- readxl::read_excel(path = nom_fichier_SN_2024,
                                sheet = "Paramètres", range = "B19:K19",
@@ -66,10 +66,10 @@ info_SN2 <- readxl::read_excel(path = nom_fichier_SN_2024,
   pivot_longer(cols = 1:10, values_to = "n_arbres") %>%
   add_column(systeme, traitement, ligne, .before = 1) %>% 
   select(-name) %>% 
-  add_column(t = c("h3", "b3", "b2", "b3", "h3", "h2", "h3", "h2", "b2", "b3"),
-             colour = c("#00441b", "#40004b", "#762a83", "#40004b", "#00441b",
-                        "#1b7837", "#00441b", "#1b7837", "#762a83", "#40004b"),
-             sym = c(2, 6, 25, 6, 2, 24, 2, 24, 25, 6)) %>%
+  add_column(t = c("b3", "h2", "h3", "b3", "b2", "h3", "h2", "h3", "b2", "b3"),
+             colour = c("#c2a5cf", "#1b7837", "#a6dba0", "#c2a5cf", "#762a83", 
+                        "#a6dba0", "#1b7837", "#a6dba0", "#762a83", "#c2a5cf"),
+             sym = c(25, 2, 24, 25, 6, 24, 2, 25, 6, 25)) %>%
   mutate(année = 2024)
 info <- rbind(info_SN1, info_SN2); rm(info_SN1, info_SN2)
 
@@ -475,6 +475,10 @@ F3_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
 # acériculture de l'est (CE) ---------------------------------------------------
 d <- rbind(d, F1_h1_2022, F1_b1_2023, F2_h1_2022, F2_h1_2023, F3_b1_2022, F3_b1_2023)
 
+# re-arranger l'ordre du facteur traitement ------------------------------------
+d <- d %>% mutate(t = ordered(t, levels = c("h3", "h2", "h1.5", "h1", "b1", 
+                                            "b1.5", "b2", "b3")))
+
 # re-définir les noms des colonnes ---------------------------------------------
 noms_col_SN_2023 <- c("date", "temps", "responsable", "periode", "A_AC_h3", 
                       "C_CC_h3", "C_CT_h1", "B_BC_b1", "A_AT_b3", "B_BT_b3")
@@ -680,7 +684,7 @@ rm(A_b3_2023, A_b3_2024, A_h2_2024, A_h3_2023, atp, atp_2023, atp_2024,
    B_b1_2023, B_b3_2023, B_b3_2024, B_h3_2024, brix, brix_2023, brix_2024, 
    C_b2_2024, C_h1_2023, C_h3_2023, C_h3_2024, E_b1_2023, E_b2_2024, E_b3_2023, 
    E_b3_2024, E_h1_2023, E_h2_2024, E_h3_2023, E_h3_2024, F1_h1_2022, 
-   F1_h1_2023, F2_h1_2022, F2_h1_2023, F3_b1_2022, F3_b1_2023, ph, ph_2023, 
+   F1_b1_2023, F2_h1_2022, F2_h1_2023, F3_b1_2022, F3_b1_2023, ph, ph_2023, 
    ph_2024, sc, sc_2023, sc_2024, tmp1, tmp2, nom_fichier_CE_2022, 
    nom_fichier_CE_2023, nom_fichier_SN_2023, nom_fichier_SN_2024, 
    noms_col_CE, noms_col_SN, noms_col_SN_2023, noms_col_SN_2024, ligne, systeme, 
