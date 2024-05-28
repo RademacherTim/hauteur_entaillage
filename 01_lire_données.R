@@ -689,3 +689,4 @@ rm(A_b3_2023, A_b3_2024, A_h2_2024, A_h3_2023, atp, atp_2023, atp_2024,
    nom_fichier_CE_2023, nom_fichier_SN_2023, nom_fichier_SN_2024, 
    noms_col_CE, noms_col_SN, noms_col_SN_2023, noms_col_SN_2024, ligne, systeme, 
    traitement, types_col_SN)
+

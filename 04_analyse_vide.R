@@ -219,25 +219,26 @@ text(x = as_datetime("2024-04-07"), y = -29, labels = "Ligne E")
 v_h <- v_h %>% 
   mutate(année   = factor(année),
          ligne   = factor(ligne),
-         t       = factor(t),
+         t       = factor(t, ordered = TRUE, 
+                          levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
          endroit = factor(endroit),
          heure   = factor(heure))
 
 # relation entre l'hauteur de l'entaille et le niveau de vide ------------------
 mod_v <- brms::brm(brms::bf(vide ~ 
-                              (1 | t) +#       # traitement
-                              #(1 | endroit) + # début et fin de ligne
-                              (1 | heure) +   # différence par heure
-                              (1 | ligne)),   # différence entre systèmes
-                      data = v_h %>% select(année, t, heure),
-                      family = gaussian(), 
-                      prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
-                                set_prior('exponential(1)', class = 'sigma')),
-                      cores = 1, chains = 1,
-                      control = list(max_treedepth = 11),
-                      iter = 6000,
-                      seed = 1353,
-                      backend = 'cmdstanr')
+                               (1 | t) +       # traitement
+                               (1 | heure) +   # différence par heure
+                               (1 | ligne)),   # différence entre systèmes
+                    data = v_h %>% select(ligne, t, heure, vide) %>% 
+                      filter(!is.na(vide)),
+                    family = gaussian(), 
+                    prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
+                              set_prior('exponential(1)', class = 'sigma')),
+                    cores = 4, chains = 4,
+                    control = list(max_treedepth = 11),
+                    iter = 6000,
+                    seed = 1353,
+                    backend = 'cmdstanr')
 
 # vérifier la distribution postérieur ------------------------------------------
 plot(mod_v)
@@ -247,10 +248,49 @@ pp_check(mod_v, type = 'scatter_avg', ndraws = 100)
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_v)
-ranef(mod_v)$ligne [, , 'Intercept']
 ranef(mod_v)$t [, , 'Intercept']
+ranef(mod_v)$ligne [, , 'Intercept']
+ranef(mod_v)$ligne:endroit [, , 'Intercept']
 ranef(mod_v)$heure [, , 'Intercept']
-#ranef(mod_v)$endroit [, , 'Intercept']
+
+# Extraire les distributions postérieures --------------------------------------
+theme_set(theme_tidybayes() + panel_border())
+mod_v %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name ="Sous-vide (\" Hg)") +
+  scale_y_discrete(name ="Hauteur relative au latéral", 
+                   labels=c("-24\"", "-12\"","-4\"","+4\"","+12\"","+24\"")) +
+  stat_halfeye()
+
+# relation entre l'hauteur de l'entaille et le niveau de vide ------------------
+mod_v2 <- brms::brm(brms::bf(vide ~ 
+                              (1 | t) +       # traitement
+                              (1 | heure) +   # différence par heure
+                              (1 | ligne / endroit)),   # différence entre systèmes
+                    data = v_h %>% select(ligne, t, endroit, heure, vide) %>% 
+                     filter(!is.na(vide)),
+                    family = gaussian(), 
+                    prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
+                              set_prior('exponential(1)', class = 'sigma')),
+                    cores = 4, chains = 4,
+                    control = list(max_treedepth = 11),
+                    iter = 6000,
+                    seed = 1353,
+                    backend = 'cmdstanr')
+
+# vérifier la distribution postérieur ------------------------------------------
+plot(mod_v2)
+pp_check(mod_v2, ndraws = 100)
+pp_check(mod_v2, type = 'error_hist',  ndraws = 10)
+pp_check(mod_v2, type = 'scatter_avg', ndraws = 100)
+
+# regarder le sommaire et les coéfficients -------------------------------------
+summary(mod_v2)
+ranef(mod_v2)$t [, , 'Intercept']
+ranef(mod_v2)$ligne [, , 'Intercept']
+ranef(mod_v2)$ligne:endroit [, , 'Intercept']
+ranef(mod_v2)$heure [, , 'Intercept']
 
 # ============================================================================ #
 # Ce qui suit traite les données des têtes de ligne, des extracteurs et des 

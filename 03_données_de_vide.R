@@ -415,7 +415,7 @@ d_horaire <- left_join(d1_horaire, d2, by = 'heure') %>%
            t_max, temp, vide) %>% 
   select(-datetime) %>% 
   mutate(vide_ligne = case_when(
-    temp <= -2 ~ NA, # TR - Il faut change les seuils ici. La pompe s'arrête à 2C et re-démarre à -0.5C
+    temp <= -2 ~ NA, # TR - Il faut changer les seuils ici. La pompe s'arrête à 2C et re-démarre à -0.5C
     temp >  -2 ~ vide,
   ))
 
