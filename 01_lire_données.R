@@ -334,7 +334,8 @@ d <- rbind(A_h3_2023, A_b3_2023, B_b1_2023, B_b3_2023, C_h3_2023, C_h1_2023,
 d <- d %>% filter(!is.na(date)) 
 
 # ajouter le site et convertir les caractères en facteurs ----------------------
-d <- d %>% mutate(t = factor(t, levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
+d <- d %>% mutate(t = factor(t, ordered = TRUE, 
+                             levels = c("h3", "h2", "h1", "b1", "b2", "b3")),
                   systeme = factor(systeme, levels = c('A', 'B', 'C', 'E')),
                   ligne = factor(ligne, 
                                  levels = c("AC", "AT", "BC", "BT", "CC", "CT", 
@@ -516,7 +517,7 @@ brix_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
                values_to = "brix") %>%
   mutate(date = as_date(date),
          heure = as.numeric(substr(temps, 1, 2)),
-         minute = as.numeric(substr(temps, 6, 7)),
+         minute = as.numeric(substr(temps, 4, 5)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
          année = factor("2024")) %>%
   select(-c(responsable, periode, temps, heure, minute))
@@ -551,7 +552,7 @@ atp_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
          année = factor("2023")) %>%
   select(-c(responsable, periode, temps, heure, minute))
 atp_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
-                                sheet = 'Compilation_Données_2024', range = 'A20:J31',
+                                sheet = 'Compilation_Données_2024', range = 'A27:J38',
                                 col_types = c('date', 'text', 'text', 'text', 
                                               rep('numeric', 6)),
                                 col_names = noms_col_SN_2024) %>% 
@@ -561,7 +562,7 @@ atp_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
                values_to = "atp") %>%
   mutate(date = as_date(date),
          heure = as.numeric(substr(temps, 1, 2)),
-         minute = as.numeric(substr(temps, 6, 7)),
+         minute = as.numeric(substr(temps, 4, 5)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
          année = factor("2024")) %>%
   select(-c(responsable, periode, temps, heure, minute))
@@ -597,7 +598,7 @@ ph_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
          année = factor("2023")) %>%
   select(-c(responsable, periode, temps, heure, minute))
 ph_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
-                               sheet = 'Compilation_Données_2024', range = 'A36:J47',
+                               sheet = 'Compilation_Données_2024', range = 'A50:J61',
                                col_types = c('date', 'text', 'text', 'text', 
                                              rep('numeric', 6)),
                                col_names = noms_col_SN_2024) %>% 
@@ -607,7 +608,7 @@ ph_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
                values_to = "ph") %>%
   mutate(date = as_date(date),
          heure = as.numeric(substr(temps, 1, 2)),
-         minute = as.numeric(substr(temps, 6, 7)),
+         minute = as.numeric(substr(temps, 4, 5)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
          année = factor("2024")) %>%
   select(-c(responsable, periode, temps, heure, minute))
@@ -642,7 +643,7 @@ sc_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
          année = factor("2023")) %>%
   select(-c(responsable, periode, temps, heure, minute))
 sc_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
-                               sheet = 'Compilation_Données_2024', range = 'A68:J79',
+                               sheet = 'Compilation_Données_2024', range = 'A96:J107',
                                col_types = c('date', 'text', 'text', 'text', 
                                              rep('numeric', 6)),
                                col_names = noms_col_SN_2024) %>% 
@@ -652,7 +653,7 @@ sc_2024 <- readxl::read_excel(path = nom_fichier_SN_2024,
                values_to = "sc") %>%
   mutate(date = as_date(date),
          heure = as.numeric(substr(temps, 1, 2)),
-         minute = as.numeric(substr(temps, 6, 7)),
+         minute = as.numeric(substr(temps, 4, 5)),
          datetime = ymd_hm(str_c(date, heure, minute, sep = " ")),
          année = factor("2024")) %>%
   select(-c(responsable, periode, temps, heure, minute))
@@ -689,4 +690,4 @@ rm(A_b3_2023, A_b3_2024, A_h2_2024, A_h3_2023, atp, atp_2023, atp_2024,
    nom_fichier_CE_2023, nom_fichier_SN_2023, nom_fichier_SN_2024, 
    noms_col_CE, noms_col_SN, noms_col_SN_2023, noms_col_SN_2024, ligne, systeme, 
    traitement, types_col_SN)
-
+#===============================================================================

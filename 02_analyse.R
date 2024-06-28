@@ -1,7 +1,9 @@
-# dépendances ------------------------------------------------------------------
-if (!existsFunction('brms')) library('brms')
-if (!existsFunction('pp_check')) library('rstanarm')
-if (!existsFunction('%>%')) library('tidyverse')
+# Dépendances ------------------------------------------------------------------
+if (!existsFunction("brms")) library("brms")
+if (!existsFunction("pp_check")) library("rstanarm")
+if (!existsFunction("%>%")) library("tidyverse")
+if (!existsFunction("spread_draws")) library("tidybayes")
+if (!existsFunction("panel_border")) library("cowplot")
 
 
 # Lire les données -------------------------------------------------------------
@@ -50,7 +52,7 @@ axis(side = 1, at = as_datetime(c("2024-02-28", "2024-03-06", "2024-03-13",
      labels = c("28 feb", "6 mar", "13 mar", "20 mar", "27 mar", "3 avr", 
                 "10 avr", "17 avr"))
 axis(side = 2, las = 1)
-for (i in 20){#:dim(info)[1]){
+for (i in 11:dim(info)[1]){
   con <- d$t == info$t[i] & d$systeme == info$systeme[i]
   points(x = d$datetime[con] + 
            hours(sample(-4:4, size = length(d$datetime[con]), replace = TRUE)), 
@@ -61,13 +63,13 @@ text(x = as_datetime("2024-04-17"), y = 12, labels = "2024", cex = 1)
 
 
 # L'effet de l'hauteur de l'entaille sur le rendement (modèle complet h) -------
-mod_vol <- brms::brm(brms::bf(rendement ~ 
+mod_vol <- brms::brm(brms::bf(rendement ~
                               h +                     # effet de l'hauteur de l'entaille 
-                              (1 | année / date) +    # différence entre année et date
-                              (1 | systeme / ligne) + # différence entre systèmes et ligne
-                              (1 | site)),            # effet du site
-                      data = d,
-                      family = gaussian(), 
+                              (1 | site / année / date) +    # différence entre année et date
+                              (1 | systeme / ligne)), #+ # différence entre systèmes et ligne
+                              #(1 | site)),            # effet du site
+                      data = d %>% filter(rendement > 0),
+                      family = lognormal(), 
                       prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
                                 set_prior('exponential(1)', class = 'sigma'),
                                 set_prior('normal(0, 2)', class = 'b')),
@@ -79,34 +81,33 @@ mod_vol <- brms::brm(brms::bf(rendement ~
 
 # Vérifier la distribution postérieur ------------------------------------------
 plot(mod_vol)
-
 pp_check(mod_vol, ndraws = 100)
 pp_check(mod_vol, type = 'error_hist',  ndraws = 10)
 pp_check(mod_vol, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
 # Effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_vol)) [[1]]
+theme_set(theme_tidybayes() + panel_border())
+plot(conditional_effects(mod_vol)) [[1]] +
+  scale_y_continuous(name ="Rendement en sève par entaille par coulée (litres)",
+                     limits = c(0, 25)) +
+  scale_x_continuous(name ="Hauteur realtive de l'entaille (cm)")
 
 # Regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol)
 ranef(mod_vol)$site [, , 'Intercept']
-ranef(mod_vol)$année [, , 'Intercept'] 
-ranef(mod_vol)$`année:date`[, , 'Intercept']
+ranef(mod_vol)$`site:année` [, , 'Intercept'] 
+ranef(mod_vol)$`site:année:date`[, , 'Intercept']
 ranef(mod_vol)$systeme [, , 'Intercept']
 ranef(mod_vol)$`systeme:ligne`[, , "Intercept"]
 summary(mod_vol)$fixed
 
 # Notes (modèle complet h) : 
 # ------------------------------------------------------------------------------
-# L'effet est petit mais important, car chaque centimetres, entaille et coulée 
-# ont un effet. En résumé, l'effet est de 0.001987863 L par entaille par coulée 
-# par cm est important. Par exemple, pour une saison de 15 coulée faire 
-# l'entaille 50 cm plus haut donne 1.5L plus de sève par entaille. 
-
-# TR - Je devrais peut-être inclure site dans l'interaction d'année et date, car la 
-# météo n'était pas nécessairement similaire sur les deux sites à cause de leur 
-# distance importante
+# L'effet est petit et plutôt insignificant. Chaque centimetres, entaille et 
+# coulée ont un effet. En résumé, l'effet est de 0.0004176738 L par entaille 
+# par coulée par cm est important. Par exemple, pour une saison de 15 coulée 
+# faire l'entaille 50 cm plus haut donne 0.3 L plus de sève par entaille. 
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert seulement 
 # h) ---------------------------------------------------------------------------
@@ -114,8 +115,8 @@ mod_vol_SN <- brms::brm(brms::bf(rendement ~
                                 h +                     # effet de l'hauteur de l'entaille 
                                 (1 | année / date) +    # différence entre année et date
                                 (1 | systeme / ligne)),# + # différence entre systèmes et ligne
-                     data = d %>% filter(site == "SN"),
-                     family = gaussian(), 
+                     data = d %>% filter(site == "SN" & rendement > 0),
+                     family = lognormal(), 
                      prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
                                set_prior('exponential(1)', class = 'sigma'),
                                set_prior('normal(0, 2)', class = 'b')),
@@ -134,7 +135,10 @@ pp_check(mod_vol_SN, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
 # Effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_vol_SN)) [[1]]
+plot(conditional_effects(mod_vol_SN)) [[1]] +
+  scale_y_continuous(name ="Rendement en sève par entaille par coulée (litres)",
+                     limits = c(0, 5)) +
+  scale_x_continuous(name ="Hauteur realtive de l'entaille (cm)")
 
 # Regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol_SN)
@@ -144,7 +148,7 @@ ranef(mod_vol_SN)$systeme [, , 'Intercept']
 ranef(mod_vol_SN)$`systeme:ligne`[, , "Intercept"]
 summary(mod_vol_SN)$fixed
 # Notes (modèle Saint-Norbert seulement h) -------------------------------------
-# L'effet est plus fort à Saint-Norbert qu'au Club de l'Est
+# L'effet n'est similaire à Saint-Norbert comparé au modèle global.
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Club de l'Est seulement 
 # h) ---------------------------------------------------------------------------
@@ -152,8 +156,8 @@ mod_vol_CE <- brms::brm(brms::bf(rendement ~
                                    h +                     # effet de l'hauteur de l'entaille 
                                    (1 | année / date) +    # différence entre année et date
                                    (1 | ligne)),           # différence entre lignes
-                        data = d %>% filter(site == "CE"),
-                        family = gaussian(), 
+                        data = d %>% filter(site == "CE" & rendement > 0),
+                        family = lognormal(), 
                         prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
                                   set_prior('exponential(1)', class = 'sigma'),
                                   set_prior('normal(0, 2)', class = 'b')),
@@ -172,7 +176,10 @@ pp_check(mod_vol_CE, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
 # Effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_vol_CE)) [[1]]
+plot(conditional_effects(mod_vol_CE))[[1]] +
+  scale_y_continuous(name ="Rendement en sève par entaille par coulée (litres)",
+                     limits = c(0, 3)) +
+  scale_x_continuous(name ="Hauteur realtive de l'entaille (cm)")
 
 # Regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol_CE)
@@ -185,15 +192,15 @@ summary(mod_vol_CE)$fixed
 
 # L'effet de l'hauteur de l'entaille sur le rendement (modèle complet) t -------
 mod_vol2 <- brms::brm(brms::bf(rendement ~ 
-                                t +                     # effet du traitement 
-                                (1 | année / date) +    # différence entre année et date
-                                (1 | systeme / ligne) + # différence entre systèmes et ligne
-                                (1 | site)),            # effet du site
-                     data = d,
-                     family = gaussian(), 
+                                (1 | t) +               # effet du traitement 
+                                (1 | site / année / date) +    # différence entre année et date
+                                (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                                #(1 | site)),            # effet du site
+                     data = d %>% select(rendement, année, site, systeme, ligne, t, date) %>% filter(rendement > 0),
+                     family = lognormal(), 
                      prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
-                               set_prior('exponential(1)', class = 'sigma'),
-                               set_prior('normal(0, 2)', class = 'b')),
+                               set_prior('exponential(1)', class = 'sigma')),
+                               #set_prior('normal(0, 2)', class = 'b')),
                      cores = 4, chains = 4,
                      control = list(adapt_delta = 0.9, max_treedepth = 11),
                      iter = 6000,
@@ -208,36 +215,47 @@ pp_check(mod_vol2, type = 'error_hist',  ndraws = 10)
 pp_check(mod_vol2, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
-# effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_vol2)) [[1]]
+# Extraire les distributions postérieures --------------------------------------
+mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
+                     limits = c(0, 6)) +
+  scale_y_discrete(name ="Hauteur relative au latéral", 
+                   labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
+                            "+12\"", "+24\"")) +
+  stat_halfeye()
 
 # Regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol2)
-ranef(mod_vol2)$année [, , 'Intercept']
-ranef(mod_vol2)$`année:date`[, , 'Intercept']
+ranef(mod_vol2)$t[, ,"Intercept"]
+ranef(mod_vol2)$site[, ,"Intercept"]
+ranef(mod_vol2)$`site:année`[, , 'Intercept']
+ranef(mod_vol2)$`site:année:date`[, , 'Intercept']
 ranef(mod_vol2)$systeme [, , 'Intercept']
 ranef(mod_vol2)$`systeme:ligne`[, , "Intercept"]
-summary(mod_vol2)$fixed
 # Notes (modèle complet t) -----------------------------------------------------
+# Aucuns des effets catégorique est clairement positifs ou négatifs dans un 
+# modèle global.
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert seulement 
 # t) ---------------------------------------------------------------------------
 mod_vol2_SN <- brms::brm(brms::bf(rendement ~ 
-                                   t +                     # effet du traitement
+                                   (1 | t) +                     # effet du traitement
                                    (1 | année / date) +    # différence entre année et date
                                    (1 | systeme / ligne)),# + # différence entre systèmes et ligne
-                        data = d %>% filter(site == "SN"),
-                        family = gaussian(), 
+                        data = d %>% filter(site == "SN" & rendement > 0),
+                        family = lognormal(), 
                         prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
-                                  set_prior('exponential(1)', class = 'sigma'),
-                                  set_prior('normal(0, 2)', class = 'b')),
+                                  set_prior('exponential(1)', class = 'sigma')),
+                                  #set_prior('normal(0, 2)', class = 'b')),
                         cores = 4, chains = 4,
                         control = list(adapt_delta = 0.9, max_treedepth = 11),
                         iter = 6000,
                         seed = 1353,
                         backend = 'cmdstanr')
 
-# vérifier la distribution postérieur ------------------------------------------
+# Vérifier la distribution postérieur ------------------------------------------
 plot(mod_vol2_SN)
 
 pp_check(mod_vol2_SN, ndraws = 100)
@@ -245,29 +263,120 @@ pp_check(mod_vol2_SN, type = 'error_hist',  ndraws = 10)
 pp_check(mod_vol2_SN, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
-# effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_vol2_SN)) [[1]]
+# extraire les distributions postérieures --------------------------------------
+mod_vol2_SN %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
+                     limits = c(0, 2.5)) +
+  scale_y_discrete(name ="Hauteur relative au latéral", 
+                   labels=c("-24\"", "-12\"", "-4\"", "+4\"", "+12\"", "+24\"")) +
+  stat_halfeye()
 
-# regarder le sommaire et les coéfficients -------------------------------------
+# Regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol2_SN)
+ranef(mod_vol2_SN)$t [, , 'Intercept']
 ranef(mod_vol2_SN)$année [, , 'Intercept']
 ranef(mod_vol2_SN)$`année:date`[, , 'Intercept']
 ranef(mod_vol2_SN)$systeme [, , 'Intercept']
 ranef(mod_vol2_SN)$`systeme:ligne`[, , "Intercept"]
-summary(mod_vol2_SN)$fixed
+# Notes : Pas d'effet claire 
+
+# L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert seulement 
+# t en 2023) -------------------------------------------------------------------
+mod_vol23_SN <- brms::brm(brms::bf(rendement ~ 
+                                    (1 | t) +                     # effet du traitement
+                                    (1 | date) +    # différence entre année et date
+                                    (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                         data = d %>% filter(site == "SN" & rendement > 0 & année == 2023),
+                         family = lognormal(), 
+                         prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
+                                   set_prior('exponential(1)', class = 'sigma')),
+                         cores = 4, chains = 4,
+                         control = list(adapt_delta = 0.9, max_treedepth = 11),
+                         iter = 6000,
+                         seed = 1353,
+                         backend = 'cmdstanr')
+
+# Vérifier la distribution postérieur ------------------------------------------
+plot(mod_vol23_SN)
+
+pp_check(mod_vol23_SN, ndraws = 100)
+pp_check(mod_vol23_SN, type = 'error_hist',  ndraws = 10)
+pp_check(mod_vol23_SN, type = 'scatter_avg', ndraws = 100)
+# erreur de la distribution postérieur semble être distribuée normalement
+
+# extraire les distributions postérieures --------------------------------------
+mod_vol23_SN %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
+                     limits = c(0, 2)) +
+  scale_y_discrete(name ="Hauteur relative au latéral", 
+                   labels=c("-24\"", "-4\"", "+4\"", "+24\"")) +
+  stat_halfeye()
+
+# Regarder le sommaire et les coéfficients -------------------------------------
+summary(mod_vol23_SN)
+ranef(mod_vol23_SN)$t [, , 'Intercept']
+ranef(mod_vol23_SN)$date[, , 'Intercept']
+ranef(mod_vol23_SN)$systeme [, , 'Intercept']
+ranef(mod_vol23_SN)$`systeme:ligne`[, , "Intercept"]
+# Notes : 
+
+# L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert seulement 
+# t en 2024) -------------------------------------------------------------------
+mod_vol24_SN <- brms::brm(brms::bf(rendement ~ 
+                                     (1 | t) +                     # effet du traitement
+                                     (1 | date) +    # différence entre année et date
+                                     (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                          data = d %>% filter(site == "SN" & rendement > 0 & année == 2024),
+                          family = lognormal(), 
+                          prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
+                                    set_prior('exponential(1)', class = 'sigma')),
+                          cores = 4, chains = 4,
+                          control = list(adapt_delta = 0.9, max_treedepth = 11),
+                          iter = 6000,
+                          seed = 1353,
+                          backend = 'cmdstanr')
+
+# Vérifier la distribution postérieur ------------------------------------------
+plot(mod_vol24_SN)
+
+pp_check(mod_vol24_SN, ndraws = 100)
+pp_check(mod_vol24_SN, type = 'error_hist',  ndraws = 10)
+pp_check(mod_vol24_SN, type = 'scatter_avg', ndraws = 100)
+# erreur de la distribution postérieur semble être distribuée normalement
+
+# extraire les distributions postérieures --------------------------------------
+mod_vol24_SN %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
+                     limits = c(0, 2)) +
+  scale_y_discrete(name ="Hauteur relative au latéral", 
+                   labels=c("-24\"", "-12\"", "+12\"", "+24\"")) +
+  stat_halfeye()
+
+# Regarder le sommaire et les coéfficients -------------------------------------
+summary(mod_vol24_SN)
+ranef(mod_vol24_SN)$t [, , 'Intercept']
+ranef(mod_vol24_SN)$date[, , 'Intercept']
+ranef(mod_vol24_SN)$systeme [, , 'Intercept']
+ranef(mod_vol24_SN)$`systeme:ligne`[, , "Intercept"]
 # Notes : 
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Club de l'Est seulement 
 # t) ---------------------------------------------------------------------------
 mod_vol2_CE <- brms::brm(brms::bf(rendement ~ 
-                                   t +                     # effet du traitement
-                                   (1 | année / date) +    # différence entre année et date
+                                   (1 | t) +            # effet du traitement
+                                   (1 | année / date) + # différence entre année et date
                                    (1 | ligne)),# + # différence entre systèmes et ligne
-                        data = d %>% filter(site == "CE"),
-                        family = gaussian(), 
+                        data = d %>% filter(site == "CE" & rendement > 0),
+                        family = lognormal(), 
                         prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
-                                  set_prior('exponential(1)', class = 'sigma'),
-                                  set_prior('normal(0, 2)', class = 'b')),
+                                  set_prior('exponential(1)', class = 'sigma')),
+                                  #set_prior('normal(0, 2)', class = 'b')),
                         cores = 4, chains = 4,
                         control = list(adapt_delta = 0.9, max_treedepth = 11),
                         iter = 6000,
@@ -282,16 +391,23 @@ pp_check(mod_vol2_CE, type = 'error_hist',  ndraws = 10)
 pp_check(mod_vol2_CE, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
-# effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_vol2_CE)) [[1]]
+# Extraire les distributions postérieures --------------------------------------
+mod_vol2_CE %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
+                     limits = c(0, 5)) +
+  scale_y_discrete(name ="Hauteur relative au latéral", 
+                   labels=c("-8\"", "+8\"")) +
+  stat_halfeye()
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol2_CE)
+ranef(mod_vol2_CE)$t [, , 'Intercept']
 ranef(mod_vol2_CE)$année [, , 'Intercept']
 ranef(mod_vol2_CE)$`année:date`[, , 'Intercept']
 ranef(mod_vol2_CE)$ligne[, , "Intercept"]
-summary(mod_vol2_CE)$fixed
-# Notes : 
+# Notes : Pas d'effet claire
 
 # teneur en sucre par hauteur et système ---------------------------------------
 par(mar = c(5, 5, 1, 2), mfrow = c (2, 1))
@@ -345,12 +461,12 @@ mod_brix1 <- brms::brm(brms::bf(brix ~
                              (1 | année / date) +    # différence entre année et date
                              (1 | systeme / ligne)), # difference entre systèmes et lignes
                        data = d %>% #add_column(brix1_se = brix1_se) %>% 
-                         filter(site == "CE") %>%
+                         filter(site == "SN") %>%
                          select(-rendement, -datetime, -site, -h),
                        family = gaussian(), 
                        prior = c(set_prior('normal(2, 5)', class = 'Intercept'),
-                                 set_prior('exponential(1)', class = 'sigma'),
-                                 set_prior('normal(0, 2)', class = 'b')),
+                                 set_prior('exponential(1)', class = 'sigma')),
+                                 #set_prior('normal(0, 2)', class = 'b')),
                        cores = 4, chains = 4,
                        control = list(adapt_delta = 0.99),
                        iter = 6000,
@@ -374,8 +490,9 @@ plot(conditional_effects(mod_brix1)) [[1]]
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_brix1)
-summary(mod_brix1)$fixed
-ranef(mod_brix1)$année [, , 'Intercept']
+summary(mod_brix1_h)$fixed
+ranef(mod_brix1_t)$t [, , 'Intercept']
+#ranef(mod_brix1)$année [, , 'Intercept']
 ranef(mod_brix1)$`année:date`[, , 'Intercept']
 ranef(mod_brix1)$systeme [, , 'Intercept']
 ranef(mod_brix1)$`systeme:ligne`[, , "Intercept"]

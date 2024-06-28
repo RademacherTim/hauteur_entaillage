@@ -75,13 +75,45 @@ tmp_23 <- tmp_23 %>% filter(datetime > as_datetime("2023-03-21") &
                           datetime < as_datetime("2023-04-16"))
 tmp_24 <- tmp_24 %>% filter(datetime > as_datetime("2024-02-27") & 
                               datetime < as_datetime("2024-04-11"))
-vide <- rbind(tmp_23, tmp_24); rm(tmp_23, tmp_24)
+#vide <- rbind(tmp_23, tmp_24); rm(tmp_23, tmp_24)
+vide_p <- rbind(tmp_23, tmp_24); rm(tmp_23, tmp_24)
 
+# Nous avons essayer de séléctionner les données de trois façons différentes:
+# 1) En utilisant toutes les données
+# 2) En excluant les données en bas de -26 "Hg
+# 3) En excluant les données en bas de -26 "Hg et des changements de plus de 1 "Hg entre mesures
+# Le code qui suit produit ces sélections et il doit être commenté au besoin. 
+# N.B.: Si je n'exclu pas les données en bas de -26 "Hg, je devrait utiliser une 
+# distribution lognormale plutôt que normale.
 # enlève tout les données avec un sous-vide inférieur à -26 "Hg ----------------
-vide <- vide %>% filter(vide < -26)
+#vide$vide[vide$vide > -26] <- NA
+
+# enlève les données avec un changement de vide plus hauts que 1" Hg -----------
+#vide_p <- vide_p %>%
+#  group_by(année, ligne, endroit, t, arbre) %>%
+#  arrange(datetime) %>%
+#  mutate(vide_p = ifelse(c(0, abs(diff(vide))) > 1, NA, vide))
+
+# calcul du temps de coulée effectif (tce) -------------------------------------
+#===============================================================================
+
+# calcul le temps depuis la dernière mesure ------------------------------------
+vide_p <- vide_p %>% group_by(année, ligne, endroit, t, arbre) %>%
+  arrange(datetime) %>%
+  mutate(diff = datetime - lag(datetime)) 
+vide_p$diff[which(vide_p$diff > 4000)] <- NA
+vide_p$diff[which(vide_p$temp < -2)] <- NA
+
+tce <- vide_p %>%
+  filter(!is.na(vide_p)) %>% 
+  group_by(année, ligne, t, arbre, endroit) %>% 
+  summarise(tce = sum(as.numeric(diff), na.rm = TRUE) / (60 * 60 * 24), 
+            .groups = "drop") %>% group_by(année, t) %>%
+  summarise(mean = mean(tce),
+            sd = sd(tce), .groups = "drop")
 
 # calcule les moyennes horaires ------------------------------------------------
-v_h <- vide %>% 
+v_h <- vide_p %>% 
   group_by(année,
            ligne, 
            t,
