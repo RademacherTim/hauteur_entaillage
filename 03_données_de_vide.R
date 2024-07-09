@@ -105,7 +105,7 @@ vide_p$diff[which(vide_p$diff > 4000)] <- NA
 vide_p$diff[which(vide_p$temp < -2)] <- NA
 
 tce <- vide_p %>%
-  filter(!is.na(vide_p)) %>% 
+  filter(!is.na(vide)) %>% 
   group_by(année, ligne, t, arbre, endroit) %>% 
   summarise(tce = sum(as.numeric(diff), na.rm = TRUE) / (60 * 60 * 24), 
             .groups = "drop") %>% group_by(année, t) %>%

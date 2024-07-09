@@ -31,14 +31,14 @@ ligne <- c("AC", "AT", "BC", "BT", "CC", "CT", "EC", "E1", "E2", "E3")
 
 # Couleurs pour les graphiques -------------------------------------------------
 #    t         h (cm)       couleur             hexcode         pch
-#    h3        +60.96       vert très foncé     "#00441b"       24
-#    h2        +30.48       vert foncé          "#1b7837"       2
-#    h1.5      +20.32       vert                "#5aae61"       21
-#    h1        +10.16       vert pale           "#a6dba0"       1
-#    b1        -10.16       mauve pale          "#c2a5cf"       5
-#    b1.5      -20.32       mauve               "#9970ab"       23
-#    b2        -30.48       mauve foncé         "#762a83"       6
-#    b3        -60.96       mauve très foncé    "#40004b"       25
+#    h3        +60.96       vert très foncé     "#a6dba0"       24
+#    h2        +30.48       vert foncé          "#5aae61"       2
+#    h1.5      +20.32       vert                "#1b7837"       21
+#    h1        +10.16       vert pale           "#00441b"       1
+#    b1        -10.16       mauve pale          "#40004b"       5
+#    b1.5      -20.32       mauve               "#762a83"       23
+#    b2        -30.48       mauve foncé         "#9970ab"       6
+#    b3        -60.96       mauve très foncé    "#c2a5cf"       25
 
 # initialiser les noms des fichiers --------------------------------------------
 nom_fichier_SN_2023 <- "../données/Compilation donnée érablière - 2023.xlsm"
@@ -69,7 +69,7 @@ info_SN2 <- readxl::read_excel(path = nom_fichier_SN_2024,
   add_column(t = c("b3", "h2", "h3", "b3", "b2", "h3", "h2", "h3", "b2", "b3"),
              colour = c("#c2a5cf", "#1b7837", "#a6dba0", "#c2a5cf", "#762a83", 
                         "#a6dba0", "#1b7837", "#a6dba0", "#762a83", "#c2a5cf"),
-             sym = c(25, 2, 24, 25, 6, 24, 2, 25, 6, 25)) %>%
+             sym = c(25, 2, 24, 25, 6, 24, 2, 24, 6, 25)) %>%
   mutate(année = 2024)
 info <- rbind(info_SN1, info_SN2); rm(info_SN1, info_SN2)
 

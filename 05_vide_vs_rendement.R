@@ -31,13 +31,17 @@ vide24 <- mod_v24 %>% spread_draws(b_Intercept, r_t[t, ]) %>%
             qi_u = qi(t_mean)[2]) %>% 
   add_column(année = 2024)
 
+par(mfrow = c(1, 1))
 par(mar=c(5, 5, 1, 1))
 plot(x = 1, y = 1,
-     xlim = c(-20.5, -25.5), ylim = c(0, 4.5), pch = 23, 
+     xlim = c(-20, -25.5), ylim = c(0, 4.5), pch = 23, 
      col = "white", axes = "FALSE",
      bg = "white", lwd = 2, 
-     xlab = "Sous-vide (\" Hg)", 
-     ylab = "Rendement par coulée par entaille (litres)", cex = 1.5)
+     #xlab = "Sous-vide (\" Hg)", 
+     #ylab = "Rendement par coulée par entaille (litres)", 
+     xlab = "Vacuum level (\" Hg)", 
+     ylab = expression(paste("Sap yield (liters ", tap^-1," ",day^-1,")")), 
+     cex = 1.5)
 axis(side = 1)
 axis (side = 2, las = 1)
 # erreur sous-vide ---------
@@ -91,8 +95,11 @@ plot(x = 1, y = 1,
      xlim = c(10, 32), ylim = c(0, 4.5), pch = 23, 
      col = "white", axes = "FALSE",
      bg = "white", lwd = 2, 
-     xlab = "Temps de coulée effectif (Jours)", 
-     ylab = "Rendement par coulée par entaille (litres)", cex = 1.5)
+     #xlab = "Temps de coulée effectif (Jours)", 
+     #ylab = "Rendement par coulée par entaille (litres)", 
+     xlab = "Effective time of sap runs (days)", 
+     ylab = "Sap volume per sap run per tap (liters)", 
+     cex = 1.5)
 axis(side = 1)
 axis (side = 2, las = 1)
 # erreur sous-vide ---------

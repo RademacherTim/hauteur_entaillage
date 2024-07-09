@@ -229,7 +229,7 @@ v_h <- v_h %>%
          heure   = factor(heure))
 
 # relation entre l'hauteur de l'entaille et le niveau de vide ------------------
-mod_v <- brms::brm(brms::bf(vide ~ 
+mod_v <- brms::brm(brms::bf(log(vide) ~ 
                                (1 | t) +       # traitement
                                (1 | heure) +   # différence par heure
                                (1 | ligne)),   # différence entre systèmes
@@ -239,7 +239,7 @@ mod_v <- brms::brm(brms::bf(vide ~
                     prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
                               set_prior('exponential(1)', class = 'sigma')),
                     cores = 4, chains = 4,
-                    control = list(max_treedepth = 11),
+                    control = list(adapt_delta = 0.9, max_treedepth = 12),
                     iter = 6000,
                     seed = 1353,
                     backend = 'cmdstanr')
@@ -249,21 +249,30 @@ plot(mod_v)
 pp_check(mod_v, ndraws = 100)
 pp_check(mod_v, type = 'error_hist',  ndraws = 10)
 pp_check(mod_v, type = 'scatter_avg', ndraws = 100)
+# Need to explore better distributions to model the vacuum as the real 
+# distribution is much more skewed. Cannot use lognormal due to the negative 
+# numbers.
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_v)
 ranef(mod_v)$t [, , 'Intercept']
 ranef(mod_v)$ligne [, , 'Intercept']
-ranef(mod_v)$ligne:endroit [, , 'Intercept']
 ranef(mod_v)$heure [, , 'Intercept']
 
 # Extraire les distributions postérieures --------------------------------------
 theme_set(theme_tidybayes() + panel_border())
+# mod_v %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+#   mutate(t_mean = b_Intercept + r_t) %>%
+#   ggplot(aes(y = t, x = t_mean)) + 
+#   scale_x_continuous(name ="Sous-vide (\" Hg)") +
+#   scale_y_discrete(name ="Hauteur relative au latéral", 
+#                    labels=c("-24\"", "-12\"","-4\"","+4\"","+12\"","+24\"")) +
+#   stat_halfeye()
 mod_v %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
   ggplot(aes(y = t, x = t_mean)) + 
-  scale_x_continuous(name ="Sous-vide (\" Hg)") +
-  scale_y_discrete(name ="Hauteur relative au latéral", 
+  scale_x_continuous(name ="Vacuum level (\" Hg)") +
+  scale_y_discrete(name ="Relative spout height (inches)", 
                    labels=c("-24\"", "-12\"","-4\"","+4\"","+12\"","+24\"")) +
   stat_halfeye()
 
@@ -279,7 +288,7 @@ mod_v23 <- brms::brm(brms::bf(log(vide) ~
                      prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
                                set_prior('exponential(1)', class = 'sigma')),
                      cores = 4, chains = 4,
-                     control = list(max_treedepth = 11),
+                     control = list(adapt_delta = 0.9, max_treedepth = 12),
                      iter = 6000,
                      seed = 1353,
                      backend = 'cmdstanr')
@@ -299,11 +308,18 @@ ranef(mod_v23)$heure [, , 'Intercept']
 
 # Extraire les distributions postérieures --------------------------------------
 theme_set(theme_tidybayes() + panel_border())
+# mod_v23 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+#   mutate(t_mean = b_Intercept + r_t) %>%
+#   ggplot(aes(y = t, x = -exp(t_mean))) + 
+#   scale_x_continuous(name ="Sous-vide (\" Hg)") +
+#   scale_y_discrete(name ="Hauteur relative au latéral", 
+#                    labels=c("-24\"", "-4\"","+4\"","+24\"")) +
+#   stat_halfeye()
 mod_v23 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
   ggplot(aes(y = t, x = -exp(t_mean))) + 
-  scale_x_continuous(name ="Sous-vide (\" Hg)") +
-  scale_y_discrete(name ="Hauteur relative au latéral", 
+  scale_x_continuous(name ="Vacuum level (\" Hg)") +
+  scale_y_discrete(name ="Relative spout height", 
                    labels=c("-24\"", "-4\"","+4\"","+24\"")) +
   stat_halfeye()
 
@@ -319,7 +335,7 @@ mod_v24 <- brms::brm(brms::bf(log(vide) ~
                    prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
                              set_prior('exponential(1)', class = 'sigma')),
                    cores = 4, chains = 4,
-                   control = list(max_treedepth = 11),
+                   control = list(adapt_delta = 0.9, max_treedepth = 12),
                    iter = 6000,
                    seed = 1353,
                    backend = 'cmdstanr')
@@ -348,6 +364,9 @@ mod_v24 %>% spread_draws(b_Intercept, r_t[t, ]) %>%
   stat_halfeye()
 
 # relation entre l'hauteur de l'entaille et le niveau de vide ------------------
+# Compared to mod_v we add the nested effect of 'endroit' here, which is 
+# probably only complicating the parameter exploration. I could do a formal 
+# model comparison, but I don't see the advantages of using this model.
 mod_v2 <- brms::brm(brms::bf(vide ~ 
                               (1 | t) +       # traitement
                               (1 | heure) +   # différence par heure
@@ -358,7 +377,7 @@ mod_v2 <- brms::brm(brms::bf(vide ~
                     prior = c(set_prior('normal(-27, 4)', class = 'Intercept'),
                               set_prior('exponential(1)', class = 'sigma')),
                     cores = 4, chains = 4,
-                    control = list(max_treedepth = 11),
+                    control = list(adapt_delta = 0.9, max_treedepth = 12),
                     iter = 6000,
                     seed = 1353,
                     backend = 'cmdstanr')
