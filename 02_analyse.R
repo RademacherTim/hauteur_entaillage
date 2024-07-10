@@ -5,6 +5,10 @@ if (!existsFunction("%>%")) library("tidyverse")
 if (!existsFunction("spread_draws")) library("tidybayes")
 if (!existsFunction("panel_border")) library("cowplot")
 
+# TR - To-do
+# Need to revisit all figures and make sure that they are displaying in the real
+# order, that the labels are correct, and that they have a mean line to help 
+# decipher effects.
 
 # Lire les données -------------------------------------------------------------
 if (!exists('d')) source('01_lire_données.R')
@@ -289,10 +293,9 @@ summary(mod_vol_CE)$fixed
 
 # L'effet de l'hauteur de l'entaille sur le rendement (modèle complet) t -------
 mod_vol2 <- brms::brm(brms::bf(rendement ~ 
-                                (1 | t) +               # effet du traitement 
-                                (1 | site / année / date) +    # différence entre année et date
-                                (1 | systeme / ligne)),# + # différence entre systèmes et ligne
-                                #(1 | site)),            # effet du site
+                                (1 | t) +                   # effet du traitement 
+                                (1 | site / année / date) + # différence entre année et date
+                                (1 | systeme / ligne)),     # différence entre systèmes et ligne
                      data = d %>% select(rendement, année, site, systeme, ligne, t, date) %>% filter(rendement > 0),
                      family = lognormal(), 
                      prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
@@ -313,6 +316,9 @@ pp_check(mod_vol2, type = 'error_hist',  ndraws = 10)
 pp_check(mod_vol2, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
+# extract intercept ------------------------------------------------------------
+intercept <- posterior_summary(mod_vol2, variable = "b_Intercept")
+
 # Extraire les distributions postérieures --------------------------------------
 # mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
 #   mutate(t_mean = b_Intercept + r_t) %>%
@@ -325,9 +331,10 @@ pp_check(mod_vol2, type = 'scatter_avg', ndraws = 100)
 #   stat_halfeye()
 mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
-  ggplot(aes(y = t, x = t_mean)) + 
-  scale_x_continuous(name ="Sap volume per tap per day of flow (liters)", 
-                     limits = c(0, 6)) +
+  ggplot(aes(y = factor (t, levels = c("b3", "b2", "b1.5", "b1", "h1", "h1.5", "h2", "h3")), 
+             x = t_mean)) + 
+  scale_x_continuous(name = expression(paste("Sap yield (liters ", tap^-1," ",day^-1,")")), 
+                     limits = c(0, 5)) +
   # scale_y_discrete(name ="Relative spout height (Inches)", 
   #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
   #                           "+12\"", "+24\"")) +
@@ -338,15 +345,17 @@ mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>%
                adjust = 0.5, 
                width = 0.6, 
                .width = c(0.5, 0.8, 0.95)) +
-
-  
-  scale_fill_manual(values = c("b1" = "#40004b", "b1.5" = "#762a83", "b2" = "#9970ab", 
-                               "b3" = "#c2a5cf", "h1" = "#00441b", "h1.5" = "#1b7837", 
-                               "h2" = "#5aae61", "h3" = "#a6dba0"))
-  # scale_color_manual(values = c("b1" = "darkblue", "b1.5" = "darkgreen", 
-  #                               "b2" = "red", "b3" = "darkred", 
-  #                               "h1" = "darkblue", "h1.5" = "darkgreen", 
-  #                               "h2" = "red", "h3" = "darkred")) +
+  scale_fill_manual(values = c("b1" = "#40004b99", "b1.5" = "#762a8399", 
+                               "b2" = "#9970ab99", "b3" = "#c2a5cf99", 
+                               "h1" = "#00441b99", "h1.5" = "#1b783799", 
+                               "h2" = "#5aae6199", "h3" = "#a6dba099")) +
+  scale_color_manual(values = c("b1" = "#333333", "b1.5" = "#333333", 
+                                "b2" = "#333333", "b3" = "#333333", 
+                                "h1" = "#333333", "h1.5" = "#333333", 
+                                "h2" = "#333333", "h3" = "#333333")) +
+  theme(legend.position = "none") +
+  geom_vline(xintercept = mean(t_mean), 
+             color = "darkgrey", linetype = "dashed", size = 1)
   
 
 # Regarder le sommaire et les coéfficients -------------------------------------
@@ -592,7 +601,7 @@ for (i in 1:dim(info)[1]){
 # effet de l'hauteur de l'entaille sur le teneur en sucre (seulement disponible 
 # pour St-Norbert-d'Arthabaska) ------------------------------------------------
 mod_brix1 <- brms::brm(brms::bf(brix ~ 
-                             t +                     # hauteur de l'entaille  (t pour catégorique et h pour gradient)
+                             (1 | t) +               # hauteur de l'entaille  (t pour catégorique et h pour gradient)
                              (1 | année / date) +    # différence entre année et date
                              (1 | systeme / ligne)), # difference entre systèmes et lignes
                        data = d %>% #add_column(brix1_se = brix1_se) %>% 
@@ -616,27 +625,59 @@ pp_check(mod_brix1, type = 'error_hist',  ndraws = 10)
 pp_check(mod_brix1, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
+# extract intercept ------------------------------------------------------------
+intercept <- posterior_summary(mod_brix1, variable = "b_Intercept")
+
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
-plot(conditional_effects(mod_brix1)) [[1]]
-# Il semble avoir un petit effet de l'hauteur sur le brix, ce qui n'est pas à 
-# négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
-# qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
-# 2023). 
+mod_brix1 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = factor(t, levels = c("b3", "b2", "b1", "h1", "h2", "h3")), 
+             x = t_mean)) + 
+  scale_x_continuous(name = expression(paste("Sap sugar concentration (", degree," Brix)")), 
+                     limits = c(0.7, 3.0)) +
+  # scale_y_discrete(name ="Relative spout height (Inches)", 
+  #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
+  #                           "+12\"", "+24\"")) +
+  scale_y_discrete(name = "Relative spout height (cm)", 
+                   labels=c("-60", "-30", "-10", "+10", "+30", "+60")) +
+  stat_halfeye(aes(fill = t, color = t), 
+               adjust = 0.5, 
+               width = 0.6, 
+               .width = c(0.5, 0.8, 0.95)) +
+  scale_fill_manual(values = c("b1" = "#40004b99", "b1.5" = "#762a8399", 
+                               "b2" = "#9970ab99", "b3" = "#c2a5cf99", 
+                               "h1" = "#00441b99", "h1.5" = "#1b783799", 
+                               "h2" = "#5aae6199", "h3" = "#a6dba099")) +
+  scale_color_manual(values = c("b1" = "#333333", "b1.5" = "#333333", 
+                                "b2" = "#333333", "b3" = "#333333", 
+                                "h1" = "#333333", "h1.5" = "#333333", 
+                                "h2" = "#333333", "h3" = "#333333")) +
+  theme(legend.position = "none") +
+  geom_vline(xintercept = intercept[1, 1], 
+             color = "darkgrey", linetype = "dashed", size = 1)
+
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_brix1)
-summary(mod_brix1)$fixed
+ranef(mod_brix1)$t
 ranef(mod_brix1)$année [, , 'Intercept']
 ranef(mod_brix1)$`année:date`[, , 'Intercept']
 ranef(mod_brix1)$systeme [, , 'Intercept']
 ranef(mod_brix1)$`systeme:ligne`[, , "Intercept"]
+# Notes ------------------------------------------------------------------------
+# Il semble avoir un petit effet de l'hauteur sur le brix, ce qui n'est pas à 
+# négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
+# qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
+# 2023). 
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre ----------------------
 mod_brix2 <- brms::brm(brms::bf(brix ~ 
                                  h +                     # hauteur de l'entaille 
                                  (1 | année / date) +    # différence par date
                                  (1 | systeme / ligne)), # difference antre systèmes
-                       data = d1,
+                       data = d %>% #add_column(brix1_se = brix1_se) %>% 
+                         filter(site == "SN") %>%
+                         select(-rendement, -datetime, -site, -t),,
                        family = gaussian(), 
                        prior = c(set_prior('normal(2, 10)', class = 'Intercept'),
                                  set_prior('exponential(1)', class = 'sigma'),
@@ -658,7 +699,11 @@ pp_check(mod_brix2, type = 'scatter_avg', ndraws = 100)
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
 plot(conditional_effects(mod_brix2)) [[1]] + 
   scale_x_continuous(name = "Relative spout height (cm)") +
-  scale_y_continuous(name = "Sap sugar concentration (°Brix)", limits = c(0, 3))
+  scale_y_continuous(name = "Sap sugar concentration (°Brix)", 
+                     limits = c(0, 3)) +
+  geom_line(color = "#ef8a62", size = 2) + 
+  geom_ribbon(fill = "#ef8a6266", alpha = 0.3)
+  
 # Il semble avoir un petit effet de l'hauteur sur le brix, ce qui n'est pas à 
 # négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
 # qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
@@ -671,6 +716,11 @@ ranef(mod_brix2)$systeme [, , 'Intercept']
 ranef(mod_brix2)$systeme:ligne [, , 'Intercept']
 ranef(mod_brix2)$année [, , 'Intercept']
 ranef(mod_brix2)$`année:date` [, , 'Intercept']
+
+# comparer modèle mod_brix1 et mod_brix2 -----------------------------------------
+loo_brix1 <- loo(mod_brix1)
+loo_brix2 <- loo(mod_brix2)
+loo_compare(loo_brix1, loo_brix2)
 
 # effet de l'hauteur de l'entaille sur la contamination microbienne ------------
 mod_atp <- brms::brm(brms::bf(log(atp) | mi(atp_se) ~ 
@@ -696,6 +746,14 @@ pp_check(mod_atp, type = 'error_hist',  ndraws = 10)
 pp_check(mod_atp, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
 
+# effet de l'hauteur relative de l'entaille ---------------------------––------- 
+plot(conditional_effects(mod_atp)) [[1]] + 
+  scale_x_continuous(name = "Relative spout height (cm)") +
+  scale_y_continuous(name = "Log (ATP)", 
+                     limits = c(0, 10)) +
+  geom_line(color = "#ef8a62", size = 2) + 
+  geom_ribbon(fill = "#ef8a6266", alpha = 0.3)
+  
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_atp)
 summary(mod_atp)$fixed
@@ -703,6 +761,69 @@ ranef(mod_atp)$systeme [, , "Intercept"]
 ranef(mod_atp)$systeme:ligne [, , "Intercept"]
 ranef(mod_atp)$année [, , "Intercept"]
 ranef(mod_atp)$`année:date` [, , "Intercept"]
+
+# effet de l'hauteur de l'entaille sur la contamination microbienne ------------
+mod_atp2 <- brms::brm(brms::bf(log(atp) | mi(atp_se) ~ 
+                                (1 | t) +               # hauteur de l'entaille  (t pour catégorique et h pour gradient)
+                                (1 | année / date) +    # différence par date
+                                (1 | systeme / ligne)), # difference antre systèmes
+                     data = d1 %>% add_column (atp_se = atp_se),
+                     family = gaussian(), 
+                     prior = c(#set_prior('normal(2, 10)', class = 'Intercept'),
+                       set_prior('exponential(1)', class = 'sigma')),
+                     cores = 4, chains = 4,
+                     control = list(adapt_delta = 0.9, max_treedepth = 12),
+                     iter = 6000,
+                     warmup = 2000,
+                     seed = 1353,
+                     backend = 'cmdstanr')
+
+# vérifier la distribution postérieur ------------------------------------------
+plot(mod_atp2)
+pp_check(mod_atp2, ndraws = 100)
+pp_check(mod_atp2, type = 'error_hist',  ndraws = 10)
+pp_check(mod_atp2, type = 'scatter_avg', ndraws = 100)
+# l'erreur de la distribution postérieur ne semble pas être distribuée normalement
+
+# effet de l'hauteur relative de l'entaille ---------------------------––-------
+mod_atp2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + exp(r_t)) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name = "Log(ATP)", 
+                     limits = c(2, 14)) +
+  # scale_y_discrete(name ="Relative spout height (Inches)", 
+  #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
+  #                           "+12\"", "+24\"")) +
+  scale_y_discrete(name = "Relative spout height (cm)", 
+                   labels=c("-60", "-30", "-20", "-10", "+10", "+20", "+30", 
+                            "+60")) +
+  stat_halfeye(aes(fill = t, color = t), 
+               adjust = 0.5, 
+               width = 0.6, 
+               .width = c(0.5, 0.8, 0.95)) +
+  scale_fill_manual(values = c("b1" = "#40004b99", "b1.5" = "#762a8399", 
+                               "b2" = "#9970ab99", "b3" = "#c2a5cf99", 
+                               "h1" = "#00441b99", "h1.5" = "#1b783799", 
+                               "h2" = "#5aae6199", "h3" = "#a6dba099")) +
+  scale_color_manual(values = c("b1" = "#333333", "b1.5" = "#333333", 
+                                "b2" = "#333333", "b3" = "#333333", 
+                                "h1" = "#333333", "h1.5" = "#333333", 
+                                "h2" = "#333333", "h3" = "#333333")) +
+  theme(legend.position = "none")
+
+# regarder le sommaire et les coéfficients -------------------------------------
+summary(mod_atp2)
+summary(mod_atp2)$fixed
+ranef(mod_atp2)$t [, , "Intercept"]
+ranef(mod_atp2)$systeme [, , "Intercept"]
+ranef(mod_atp2)$systeme:ligne [, , "Intercept"]
+ranef(mod_atp2)$année [, , "Intercept"]
+ranef(mod_atp2)$`année:date` [, , "Intercept"]
+
+# compare les deux modèles -----------------------------------------------------
+loo_atp1 <- loo(mod_atp)
+loo_atp2 <- loo(mod_atp2)
+loo_compare(loo_atp1, loo_atp2)
 
 # effet de l'hauteur de l'entaille sur le pH -----------------------------------
 mod_ph <- brms::brm(brms::bf(ph | mi(ph_se) ~ 
@@ -740,6 +861,72 @@ ranef(mod_ph)$année [, , 'Intercept']
 # Pourtant, ce n'est pas significatif. Je n'aurais pas de bonne explication 
 # pour une telle tendance, non plus. 
 
+# effet de l'hauteur de l'entaille sur le pH -----------------------------------
+mod_ph2 <- brms::brm(brms::bf(ph | mi(ph_se) ~ 
+                               #ph ~
+                               (1 | t ) +              # hauteur de l'entaille 
+                               (1 | année / date) +    # différence par date
+                               (1 | systeme / ligne)), # difference entre systèmes
+                    data = d1 %>% select(-c(brix, datetime, atp, sc)) %>% 
+                      add_column(ph_se = ph_se),
+                    family = gaussian(), 
+                    prior = c(set_prior('normal(5, 10)', class = 'Intercept'),
+                              set_prior('exponential(1)', class = 'sigma')),
+                    cores = 4, chains = 4,
+                    control = list(adapt_delta = 0.99, max_treedepth = 12),
+                    iter = 6000,
+                    warmup = 2000,
+                    seed = 1353,
+                    backend = 'cmdstanr')
+
+# vérifier la distribution postérieur ------------------------------------------
+plot(mod_ph2)
+pp_check(mod_ph2, ndraws = 100)
+pp_check(mod_ph2, type = 'error_hist',  ndraws = 10)
+pp_check(mod_ph2, type = 'scatter_avg', ndraws = 100)
+# erreur de la distribution postérieur semble être distribuée normalement, mais 
+# il n'y a pas de données de ph entre 6,4 et 7,0, ce que semble bizarre.
+
+# effet de l'hauteur relative de l'entaille ---------------------------––-------
+mod_ph2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
+  mutate(t_mean = b_Intercept + r_t) %>%
+  ggplot(aes(y = t, x = t_mean)) + 
+  scale_x_continuous(name = "pH", 
+                     limits = c(3.5, 8.5)) +
+  # scale_y_discrete(name ="Relative spout height (Inches)", 
+  #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
+  #                           "+12\"", "+24\"")) +
+  scale_y_discrete(name = "Relative spout height (cm)", 
+                   labels=c("-60", "-30", "-20", "-10", "+10", "+20", "+30", 
+                            "+60")) +
+  stat_halfeye(aes(fill = t, color = t), 
+               adjust = 0.5, 
+               width = 0.6, 
+               .width = c(0.5, 0.8, 0.95)) +
+  scale_fill_manual(values = c("b1" = "#40004b99", "b1.5" = "#762a8399", 
+                               "b2" = "#9970ab99", "b3" = "#c2a5cf99", 
+                               "h1" = "#00441b99", "h1.5" = "#1b783799", 
+                               "h2" = "#5aae6199", "h3" = "#a6dba099")) +
+  scale_color_manual(values = c("b1" = "#333333", "b1.5" = "#333333", 
+                                "b2" = "#333333", "b3" = "#333333", 
+                                "h1" = "#333333", "h1.5" = "#333333", 
+                                "h2" = "#333333", "h3" = "#333333")) +
+  theme(legend.position = "none")
+
+# regarder le sommaire et les coéfficients -------------------------------------
+summary(mod_ph2)
+summary(mod_ph2)$fixed
+ranef(mod_ph2)$t [, , 'Intercept']
+ranef(mod_ph2)$systeme [, , 'Intercept']
+ranef(mod_ph)$année [, , 'Intercept']
+# Notes :  Il ne semble pas avoir un effect systématique avec la hauteur 
+# relative de l'entaille.
+
+# compare les deux modèles -----------------------------------------------------
+loo_ph1 <- loo(mod_ph)
+loo_ph2 <- loo(mod_ph2)
+loo_compare(loo_ph1, loo_ph2)
+
 # effet de l'hauteur de l'entaille sur le profile des sucres -------------------
 mod_sc <- brms::brm(brms::bf(sc ~ 
                              h +                     # hauteur de l'entaille 
@@ -773,3 +960,39 @@ ranef(mod_sc)$`année:date` [, , 'Intercept']
 
 # commentaires -----------------------------------------------------------------
 # L'effet est de 0.00061 [0.00033; 0.00088], donc relativement petit.
+
+# effet de l'hauteur de l'entaille sur le profile des sucres -------------------
+mod_sc2 <- brms::brm(brms::bf(sc ~ 
+                               (1 | t) +                     # hauteur de l'entaille 
+                               (1 | année / date) +    # différence par date
+                               (1 | systeme / ligne)), # difference antre systèmes
+                    data = d1,
+                    family = gaussian(), 
+                    prior = c(set_prior('normal(2, 10)', class = 'Intercept'),
+                              set_prior('exponential(1)', class = 'sigma')),
+                    cores = 4, chains = 4,
+                    control = list(adapt_delta = 0.99, max_treedepth = 13),
+                    warmup = 2000, 
+                    iter = 6000,
+                    seed = 1353,
+                    backend = 'cmdstanr')
+
+# vérifier la distribution postérieur ------------------------------------------
+plot(mod_sc2)
+pp_check(mod_sc2, ndraws = 100)
+pp_check(mod_sc2, type = 'error_hist',  ndraws = 10)
+pp_check(mod_sc2, type = 'scatter_avg', ndraws = 100)
+# erreur de la distribution postérieur semble être distribuée normalement, mais 
+
+# regarder le sommaire et les coéfficients -------------------------------------
+summary(mod_sc2)
+summary(mod_sc2)$fixed
+ranef(mod_sc2)$t [, , 'Intercept']
+ranef(mod_sc2)$systeme [, , 'Intercept']
+ranef(mod_sc2)$`systeme:ligne` [, , 'Intercept']
+ranef(mod_sc2)$`année:date` [, , 'Intercept']
+
+# compare les deux modèles -----------------------------------------------------
+loo_sc1 <- loo(mod_sc)
+loo_sc2 <- loo(mod_sc2)
+loo_compare(loo_sc1, loo_sc2)
