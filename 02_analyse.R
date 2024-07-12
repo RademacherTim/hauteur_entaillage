@@ -330,11 +330,11 @@ intercept <- posterior_summary(mod_vol2, variable = "b_Intercept")
 #                             "+12\"", "+24\"")) +
 #   stat_halfeye()
 mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
-  mutate(t_mean = b_Intercept + r_t) %>%
+  mutate(t_mean = exp(b_Intercept + r_t)) %>%
   ggplot(aes(y = factor (t, levels = c("b3", "b2", "b1.5", "b1", "h1", "h1.5", "h2", "h3")), 
              x = t_mean)) + 
   scale_x_continuous(name = expression(paste("Sap yield (liters ", tap^-1," ",day^-1,")")), 
-                     limits = c(0, 5)) +
+                     limits = c(0, 9)) +
   # scale_y_discrete(name ="Relative spout height (Inches)", 
   #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
   #                           "+12\"", "+24\"")) +
@@ -354,9 +354,8 @@ mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>%
                                 "h1" = "#333333", "h1.5" = "#333333", 
                                 "h2" = "#333333", "h3" = "#333333")) +
   theme(legend.position = "none") +
-  geom_vline(xintercept = mean(t_mean), 
+  geom_vline(xintercept = intercept[1, 1], 
              color = "darkgrey", linetype = "dashed", size = 1)
-  
 
 # Regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vol2)
@@ -703,7 +702,7 @@ plot(conditional_effects(mod_brix2)) [[1]] +
                      limits = c(0, 3)) +
   geom_line(color = "#ef8a62", size = 2) + 
   geom_ribbon(fill = "#ef8a6266", alpha = 0.3)
-  
+# Notes :  
 # Il semble avoir un petit effet de l'hauteur sur le brix, ce qui n'est pas à 
 # négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
 # qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
@@ -785,31 +784,34 @@ pp_check(mod_atp2, type = 'error_hist',  ndraws = 10)
 pp_check(mod_atp2, type = 'scatter_avg', ndraws = 100)
 # l'erreur de la distribution postérieur ne semble pas être distribuée normalement
 
+# extract intercept ------------------------------------------------------------
+intercept_atp <- posterior_summary(mod_atp2, variable = "b_Intercept")
+
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
 mod_atp2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
-  mutate(t_mean = b_Intercept + exp(r_t)) %>%
-  ggplot(aes(y = t, x = t_mean)) + 
-  scale_x_continuous(name = "Log(ATP)", 
-                     limits = c(2, 14)) +
+  mutate(t_mean = exp(b_Intercept + r_t)) %>%
+  ggplot(aes(y = factor(t, levels = c("b3", "b2", "b1", "h1", "h2", "h3")), 
+             x = t_mean)) + 
+  scale_x_continuous(name = "ATP (count)", 
+                     limits = c(0, 7000)) +
   # scale_y_discrete(name ="Relative spout height (Inches)", 
   #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
   #                           "+12\"", "+24\"")) +
   scale_y_discrete(name = "Relative spout height (cm)", 
-                   labels=c("-60", "-30", "-20", "-10", "+10", "+20", "+30", 
-                            "+60")) +
+                   labels = c("-60", "-30", "-10", "+10", "+30", "+60")) +
   stat_halfeye(aes(fill = t, color = t), 
                adjust = 0.5, 
                width = 0.6, 
                .width = c(0.5, 0.8, 0.95)) +
-  scale_fill_manual(values = c("b1" = "#40004b99", "b1.5" = "#762a8399", 
-                               "b2" = "#9970ab99", "b3" = "#c2a5cf99", 
-                               "h1" = "#00441b99", "h1.5" = "#1b783799", 
+  scale_fill_manual(values = c("b1" = "#40004b99", "b2" = "#9970ab99", 
+                               "b3" = "#c2a5cf99", "h1" = "#00441b99",  
                                "h2" = "#5aae6199", "h3" = "#a6dba099")) +
-  scale_color_manual(values = c("b1" = "#333333", "b1.5" = "#333333", 
-                                "b2" = "#333333", "b3" = "#333333", 
-                                "h1" = "#333333", "h1.5" = "#333333", 
+  scale_color_manual(values = c("b1" = "#333333", "b2" = "#333333", 
+                                "b3" = "#333333", "h1" = "#333333",
                                 "h2" = "#333333", "h3" = "#333333")) +
-  theme(legend.position = "none")
+  theme(legend.position = "none")  +
+  geom_vline(xintercept = exp(intercept_atp[1, 1]), 
+             color = "darkgrey", linetype = "dashed", size = 1)
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_atp2)
@@ -887,31 +889,35 @@ pp_check(mod_ph2, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement, mais 
 # il n'y a pas de données de ph entre 6,4 et 7,0, ce que semble bizarre.
 
+# extract intercept ------------------------------------------------------------
+intercept_ph <- posterior_summary(mod_ph2, variable = "b_Intercept")
+
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
 mod_ph2 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
-  ggplot(aes(y = t, x = t_mean)) + 
+  ggplot(aes(y = factor (t, levels = c ("b3", "b2", "b1", "h1", "h2", "h3")), 
+             x = t_mean)) + 
   scale_x_continuous(name = "pH", 
                      limits = c(3.5, 8.5)) +
   # scale_y_discrete(name ="Relative spout height (Inches)", 
   #                  labels=c("-24\"", "-12\"", "-8\"", "-4\"", "+4\"", "+8\"",
   #                           "+12\"", "+24\"")) +
   scale_y_discrete(name = "Relative spout height (cm)", 
-                   labels=c("-60", "-30", "-20", "-10", "+10", "+20", "+30", 
-                            "+60")) +
+                   labels = c("-60", "-30", "-10", "+10", "+30", "+60")) +
   stat_halfeye(aes(fill = t, color = t), 
                adjust = 0.5, 
                width = 0.6, 
                .width = c(0.5, 0.8, 0.95)) +
-  scale_fill_manual(values = c("b1" = "#40004b99", "b1.5" = "#762a8399", 
-                               "b2" = "#9970ab99", "b3" = "#c2a5cf99", 
-                               "h1" = "#00441b99", "h1.5" = "#1b783799", 
+  scale_fill_manual(values = c("b1" = "#40004b99", "b2" = "#9970ab99", 
+                               "b3" = "#c2a5cf99", "h1" = "#00441b99",
                                "h2" = "#5aae6199", "h3" = "#a6dba099")) +
-  scale_color_manual(values = c("b1" = "#333333", "b1.5" = "#333333", 
-                                "b2" = "#333333", "b3" = "#333333", 
-                                "h1" = "#333333", "h1.5" = "#333333", 
+  scale_color_manual(values = c("b1" = "#333333", "b2" = "#333333", 
+                                "b3" = "#333333", "h1" = "#333333", 
                                 "h2" = "#333333", "h3" = "#333333")) +
-  theme(legend.position = "none")
+  theme(legend.position = "none") +
+  geom_vline(xintercept = intercept_ph[1, 1], 
+             color = "darkgrey", linetype = "dashed", size = 1)
+  
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_ph2)
