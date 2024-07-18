@@ -129,111 +129,117 @@ dir <- '../données/vacuum/'
 
 # lire le fichier avec la structure du réseau ----------------------------------
 struc <- read_excel(path = paste0(dir,'structure_du_réseau.xlsx'))
-systèmes <- strsplit(struc$systèmes, ', ')[[1]]
-lignes <- strsplit(struc$lignes, ', ')[[1]]
-dates <-  as.character(strsplit(struc$dates, ', ')[[1]])
-a <- struc$année
 
-# lire les données de vide ----------------------------------------------------- 
+# lire les données de vide des têtes de ligne, des extracteurs, etc. -----------
 #=============================================================================== 
 
-# boucle des systèmes ----------------------------------------------------------
-for (s in systèmes) {
+# boucle des années ------------------------------------------------------------
+for (a in struc$année) {
+  i <- which(struc$année == a)
+  systèmes <- strsplit(struc$systèmes, ', ')[[i]]
+  lignes <- strsplit(struc$lignes, ', ')[[i]]
+  dates <-  as.character(strsplit(struc$dates, ', ')[[i]])
+  if(a == 2024) dates <- substr(dates, 2, 11) 
+
+  # boucle des systèmes --------------------------------------------------------
+  for (s in systèmes) {
   
-  # fait une liste des fichiers à lire -----------------------------------------
-  if (s != 'PompesVide') {
-    noms_dossiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/'))
-  
-    # réduit la liste des dossiers ---------------------------------------------
-    noms_dossiers <- noms_dossiers[substr(noms_dossiers, 1, 10) %in% dates]
-  } else {
-    noms_dossiers <- list.files(paste0(dir,s,'/'))
-    
-    # réduit la liste des dossiers ---------------------------------------------
-    noms_dossiers <- noms_dossiers[substr(noms_dossiers, 8, 17) %in% dates]
-  }
-  
-  # vérifie qu'il y a un dossier par date --------------------------------------
-  if (length(noms_dossiers) > length(dates)) break ("Erreur : Trop de dossiers!")
-  
-  # boucle des dates -----------------------------------------------------------
-  for (date_fin in dates) {
-    
-    # obtenir les noms des fichiers --------------------------------------------
+    # fait une liste des fichiers à lire -----------------------------------------
     if (s != 'PompesVide') {
-      noms_fichiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/'))
+      noms_dossiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/'))
+    
+      # réduit la liste des dossiers ---------------------------------------------
+      noms_dossiers <- noms_dossiers[substr(noms_dossiers, 1, 10) %in% dates]
     } else {
-      noms_fichiers <- noms_dossiers
+      noms_dossiers <- list.files(paste0(dir,s,"_",a,"/"))
+      
+      # réduit la liste des dossiers ---------------------------------------------
+      noms_dossiers <- noms_dossiers[substr(noms_dossiers, 8, 17) %in% dates]
     }
     
-    # boucle des fichiers ------------------------------------------------------
-    for (f in noms_fichiers){
+    # vérifie qu'il y a un dossier par date --------------------------------------
+    if (length(noms_dossiers) > length(dates)) break ("Erreur : Trop de dossiers!")
+    
+    # boucle des dates -----------------------------------------------------------
+    for (date_fin in dates) {
       
-      # par défault il n'y qu'une mesure dans le fichier -----------------------
-      double <- FALSE
-      
-      # décompose le nom du fichier --------------------------------------------
-      composantes <- strsplit(f, split = '_')[[1]]
-      ligne <- composantes[1]
-      if (!(ligne %in% lignes)) break ("Erreur : La ligne n'existe pas!")
-      t1 <- ifelse(s != 'PompesVide', composantes[2], "POMPES_1")
-      
-      # défini deuxième traitement, le cas échéant -----------------------------
+      # obtenir les noms des fichiers --------------------------------------------
       if (s != 'PompesVide') {
-        if (substr(composantes[3], 1, 4) != a) {
-          t2 <- composantes[3]
+        noms_fichiers <- list.files(paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/'))
+      } else {
+        noms_fichiers <- noms_dossiers
+      }
+      
+      # boucle des fichiers ------------------------------------------------------
+      for (f in noms_fichiers){
+        
+        # par défault il n'y qu'une mesure dans le fichier -----------------------
+        double <- FALSE
+        
+        # décompose le nom du fichier --------------------------------------------
+        composantes <- strsplit(f, split = '_')[[1]]
+        ligne <- composantes[1]
+        if (!(ligne %in% lignes)) break ("Erreur : La ligne n'existe pas!")
+        t1 <- ifelse(s != 'PompesVide', composantes[2], "POMPES_1")
+        
+        # défini deuxième traitement, le cas échéant -----------------------------
+        if (s != 'PompesVide') {
+          if (substr(composantes[3], 1, 4) != a) {
+            t2 <- composantes[3]
+            double <- TRUE
+          }
+        } else {
+          t2 <- "POMPES_2"
           double <- TRUE
         }
-      } else {
-        t2 <- "POMPES-2"
-        double <- TRUE
-      }
-      
-      # lire les données du fichier et ajoute ----------------------------------
-      tmp <- read_excel(path = ifelse(s != 'PompesVide', 
-                                      paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/',f),
-                                      paste0(dir,s,'/',f)),
-                        skip = 1, 
-                        sheet = "Ark1")
         
-      # combien de mesures dans le fichier -----------------------------------
-      if (double) {
-        tmp <- tmp %>% 
-          pivot_longer(cols = c(Pression, `Pression 2`), 
-                       names_to = 'traitement', 
-                       values_to = 'vide') %>% 
-          rename(datetime = DateTime, t_capteur = Température) %>%
-          mutate(traitement = case_when(
-            traitement == 'Pression' ~ t1,
-            traitement == 'Pression 2' ~ t2,
-          ))
-      } else {
-        tmp <- tmp %>% 
-          rename(datetime = DateTime, 
-                 t_capteur = Température, 
-                 vide = Pression) %>%
-          add_column(traitement = t1)
+        # lire les données du fichier et ajoute ----------------------------------
+        tmp <- read_excel(path = ifelse(s != 'PompesVide', 
+                                        paste0(dir,s,'_Vacuum_',a,'/',date_fin,'/',f),
+                                        paste0(dir,s,"_",a,"/",f)),
+                          skip = 1, 
+                          sheet = "Ark1")
           
-      }
-      
-      # ajoute la ligne et le système aux données ------------------------------
-      tmp <-  tmp %>% add_column(ligne = ligne, système = s) %>% 
-        relocate(datetime, système, ligne, t_capteur, vide)
-      
-      # combine les données ----------------------------------------------------
-      if (s == systèmes[1] & date_fin == dates[1] & f == noms_fichiers[1]) {
-        d1 <- tmp
-      } else {
-        d1 <- rbind(d1, tmp)
-      }
-      
-      # supprime les variables de traitement -----------------------------------
-      if (exists(t2)) rm(t2)
-      
-    } # fin boucles fichiers
-  } # fin boucle dates
-  
-} # fin boucle systèmes
+        # combien de mesures dans le fichier -----------------------------------
+        if (double) {
+          tmp <- tmp %>% 
+            pivot_longer(cols = c(Pression, `Pression 2`), 
+                         names_to = 'traitement', 
+                         values_to = 'vide') %>% 
+            rename(datetime = DateTime, t_capteur = Température) %>%
+            mutate(traitement = case_when(
+              traitement == 'Pression' ~ t1,
+              traitement == 'Pression 2' ~ t2,
+            ))
+        } else {
+          tmp <- tmp %>% 
+            rename(datetime = DateTime, 
+                   t_capteur = Température, 
+                   vide = Pression) %>%
+            add_column(traitement = t1)
+            
+        }
+        
+        # ajoute la ligne et le système aux données ------------------------------
+        tmp <-  tmp %>% add_column(ligne = ligne, système = s) %>% 
+          relocate(datetime, système, ligne, t_capteur, vide)
+        
+        # combine les données ----------------------------------------------------
+        if (s == systèmes[1] & date_fin == dates[1] & f == noms_fichiers[1] & 
+            a == 2023) {
+          d1 <- tmp
+        } else {
+          d1 <- rbind(d1, tmp)
+        }
+        
+        # supprime les variables de traitement -----------------------------------
+        if (exists(t2)) rm(t2)
+        
+      } # fin boucles fichiers
+    } # fin boucle dates
+    
+  } # fin boucle systèmes
+} # fin boucle de l'année
 
 # brouiller les données --------------------------------------------------------
 d1 <- d1 %>% mutate(datetime = as_datetime(datetime))
@@ -390,6 +396,7 @@ d1_horaire <- d1 %>%
   summarise(t_capteur = mean(t_capteur),
             vide = mean(vide), .groups = 'drop')
 
+# TR - Need to get temperature files for 2024 to include them in the analysis for the report.
 # lire les données de température ----------------------------------------------
 #===============================================================================
 
