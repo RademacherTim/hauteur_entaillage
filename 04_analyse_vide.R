@@ -404,7 +404,8 @@ ranef(mod_v2)$heure [, , 'Intercept']
 d_vide <- d_horaire %>% 
   # exclure les données quand les lignes étaient gelées
   filter(temp > -2.0) %>%
-  group_by(système, t, heure) %>% 
+  mutate(a = year(date)) %>%
+  group_by(système, t, heure, a) %>% 
   summarise(vide = mean(vide, na.rm = TRUE), .groups = "drop") %>% 
   mutate(vide = ifelse(vide >= 26.0, vide, NA))
   
@@ -445,13 +446,18 @@ for (s in c("E")) {
 
 # faire le tri dans les données de vide ----------------------------------------
 d_vide <- d_horaire %>% 
-  # exclure les données avant et après la récolte (2023-03-21 à 2023-04-16)
-  filter(date > as_date("2023-03-21") & date < as_date("2023-04-16")) %>%
+  # exclure les données avant et après la récolte (2023-03-21 à 2023-04-16 et 
+  # 2024-02-27 à 2024-04-11)
+  filter(((year(date) == 2023 & date > as_date("2023-03-21")) & # début de saison 2023
+          (year(date) == 2023 & date < as_date("2023-04-16"))) | # fin de saison 2023
+         ((year(date) == 2024 & date > as_date("2024-02-27")) & # début de saison 2024
+          (year(date) == 2024 & date < as_date("2024-04-11")))) %>%
   # exclure les données qui n'appartiennent à aucune traitement
   filter(système != "PompesVide") %>%
   # exclure les données quand les lignes étaient gelées
   filter(temp > -2.0) %>%
-  group_by(t, heure) %>% 
+  mutate(a = year(date)) %>%
+  group_by(t, heure, a) %>% 
   summarise(vide = mean(vide, na.rm = TRUE), .groups = "drop") %>% 
   mutate(vide = ifelse(vide >= 26.0, vide, NA))
 
@@ -480,30 +486,36 @@ for (t in c("h2", "h1", "b1", "b2")){
 
 # analyse des données en fonction du traitement --------------------------------
 d_vide <- d_horaire %>% 
-  # exclure les données avant et après la récolte (2023-03-21 à 2023-04-16)
-  filter(date > as_date("2023-03-21") & date < as_date("2023-04-16")) %>%
+  # exclure les données avant et après la récolte (2023-03-21 à 2023-04-16 et 
+  # 2024-02-27 à 2024-04-11)
+  filter(((year(date) == 2023 & date > as_date("2023-03-21")) & # début de saison 2023
+            (year(date) == 2023 & date < as_date("2023-04-16"))) | # fin de saison 2023
+           ((year(date) == 2024 & date > as_date("2024-02-27")) & # début de saison 2024
+              (year(date) == 2024 & date < as_date("2024-04-11")))) %>%
   # exclure les données qui n'appartiennent à aucune traitement
   filter(système != "PompesVide") %>%
   # exclure les données quand les lignes étaient gelées
   filter(temp > -2.0) %>% 
   # exclure les données qui sont trop haut
-  mutate(vide = ifelse(vide >= 26.0, vide, NA)) %>%
+  mutate(vide = ifelse(vide_ligne >= 26.0, vide_ligne, NA)) %>%
   # standardiser l'hauteur relative de l'entaille (moyenne est déjà zéro)
-  mutate(h = h / sd(c(60.96, -60.96, 10.16, -10.16))) %>%
-  select(heure, système, h, vide) %>%
-  filter(!is.na(vide)) %>%
+  mutate(h = h / sd(c(60.96, -60.96, 10.16, -10.16)),
+         a = year(date)) %>%
+  select(heure, système, h, vide_ligne, a) %>%
+  filter(!is.na(vide_ligne)) %>%
   # standardiser le vide
-  mutate(v = (vide - mean(vide, na.rm = TRUE)) / sd (vide, na.rm = TRUE)) %>%
+  mutate(v = (vide_ligne - mean(vide_ligne, na.rm = TRUE)) / sd (vide_ligne, na.rm = TRUE)) %>%
   # convertir l'heure et le système en facteur
   mutate(heure = factor(heure),
-         système = factor(système))
+         système = factor(système),
+         a = factor(a))
 
-# TR - Quelle est la différence entre vide et vide_ligne dans les données???
 # relation entre l'hauteur de l'entaille et le niveau de vide ------------------
-mod_vide <- brms::brm(brms::bf(vide ~ 
+# la variable vide_ligne exclut les données quand la température extérieure 
+# était en bas de -2°C.
+mod_vide <- brms::brm(brms::bf(vide_ligne ~ 
                                 h +             # hauteur de l'entaille
-                                (1 | heure) +   # différence par heure
-                                (1 | système)), # différence entre systèmes
+                                (1 | système / a / heure)),   # différence entre les systèmes, années et heure
                      data = d_vide,
                      family = gaussian(), 
                      prior = c(set_prior('normal(0, 2)', class = 'Intercept'),
@@ -511,9 +523,9 @@ mod_vide <- brms::brm(brms::bf(vide ~
                                set_prior('normal(0, 2)', class = 'b')),
                      cores = 4, chains = 4,
                      control = list(max_treedepth = 11),
+                     warmup = 2000,
                      iter = 6000,
-                     seed = 1353,
-                     backend = 'cmdstanr')
+                     seed = 1353)
 
 # vérifier la distribution postérieur ------------------------------------------
 plot(mod_vide)
