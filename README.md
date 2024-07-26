@@ -1,4 +1,4 @@
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue))](https://opensource.org/license/mit)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue))](https://opensource.org/license/mit
 
 # Tapping below the lateral line does not reduce sap yield or quality significantly
 
