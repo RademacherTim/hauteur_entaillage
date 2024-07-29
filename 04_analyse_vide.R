@@ -400,15 +400,6 @@ ranef(mod_v2)$heure [, , 'Intercept']
 # Ce qui suit traite les données des têtes de ligne, des extracteurs et des 
 # pompes -----------------------------------------------------------------------
 
-# faire le tri dans les données de vide ----------------------------------------
-d_vide <- d_horaire %>% 
-  # exclure les données quand les lignes étaient gelées
-  filter(temp > -2.0) %>%
-  mutate(a = year(date)) %>%
-  group_by(système, t, heure, a) %>% 
-  summarise(vide = mean(vide, na.rm = TRUE), .groups = "drop") %>% 
-  mutate(vide = ifelse(vide >= 26.0, vide, NA))
-  
 # faire une graphique des données horaires -------------------------------------
 par(mar = c (5, 5, 1, 1))
 plot(x = d_vide$heure[d_vide$t == "h2" & d_vide$système == "E"], 
@@ -424,7 +415,7 @@ axis(side = 1, at = c(as_datetime("2023-03-20"), as_datetime("2023-03-27"),
 axis(side = 2, las = 1)
 #for (s in c("A", "B", "C", "E")) {
 for (s in c("E")) {
-
+  
   if (s == "A") {
     ts <- c("h2", "b2")
   } else if (s == "B") {
@@ -444,45 +435,6 @@ for (s in c("E")) {
   }
 }
 
-# faire le tri dans les données de vide ----------------------------------------
-d_vide <- d_horaire %>% 
-  # exclure les données avant et après la récolte (2023-03-21 à 2023-04-16 et 
-  # 2024-02-27 à 2024-04-11)
-  filter(((year(date) == 2023 & date > as_date("2023-03-21")) & # début de saison 2023
-          (year(date) == 2023 & date < as_date("2023-04-16"))) | # fin de saison 2023
-         ((year(date) == 2024 & date > as_date("2024-02-27")) & # début de saison 2024
-          (year(date) == 2024 & date < as_date("2024-04-11")))) %>%
-  # exclure les données qui n'appartiennent à aucune traitement
-  filter(système != "PompesVide") %>%
-  # exclure les données quand les lignes étaient gelées
-  filter(temp > -2.0) %>%
-  mutate(a = year(date)) %>%
-  group_by(t, heure, a) %>% 
-  summarise(vide = mean(vide, na.rm = TRUE), .groups = "drop") %>% 
-  mutate(vide = ifelse(vide >= 26.0, vide, NA))
-
-# faire une graphique des données horaires par traitement ----------------------
-par(mar = c (5, 5, 1, 1))
-plot(x = d_vide$heure[d_vide$t == "h2"], 
-     y = -d_vide$vide[d_vide$t == "h2"], 
-     typ = "l", xlab = "Date", ylab = "Vide (\" Hg)", 
-     #xlim = c(as_datetime("2023-03-21"), as_datetime("2023-04-16")), 
-     xlim = c(as_datetime("2023-03-26"), as_datetime("2023-03-30")), 
-     ylim = c(-28.2, -26), 
-     axes = FALSE, col = "white", lwd = 2)
-axis(side = 1, at = c(as_datetime("2023-03-20"), as_datetime("2023-03-27"), 
-                      as_datetime("2023-04-03"), as_datetime("2023-04-10"), 
-                      as_datetime("2023-04-17")),
-     labels = c("20 mar", "27 mar", "3 avr", "10 avr", "17 avr"))
-axis(side = 2, las = 1)
-for (t in c("h2", "h1", "b1", "b2")){
-  lines(x = d_vide$heure[d_vide$t == t], 
-        y = -d_vide$vide[d_vide$t == t], 
-        col = ifelse(t == "h2", "#008837", 
-                     ifelse(t == "h1", "#a6dba0", 
-                            ifelse(t == "b1", "#c2a5cf", "#7b3294"))),
-        lwd = 2)  
-}
 
 # analyse des données en fonction du traitement --------------------------------
 d_vide <- d_horaire %>% 
@@ -497,34 +449,31 @@ d_vide <- d_horaire %>%
   # exclure les données quand les lignes étaient gelées
   filter(temp > -2.0) %>% 
   # exclure les données qui sont trop haut
-  mutate(vide = ifelse(vide_ligne >= 26.0, vide_ligne, NA)) %>%
+  mutate(v = ifelse(vide_ligne >= 26.0, vide_ligne, NA)) %>%
   # standardiser l'hauteur relative de l'entaille (moyenne est déjà zéro)
-  mutate(h = h / sd(c(60.96, -60.96, 10.16, -10.16)),
-         a = year(date)) %>%
-  select(heure, système, h, vide_ligne, a) %>%
-  filter(!is.na(vide_ligne)) %>%
-  # standardiser le vide
-  mutate(v = (vide_ligne - mean(vide_ligne, na.rm = TRUE)) / sd (vide_ligne, na.rm = TRUE)) %>%
+  mutate(a = year(date)) %>%
+  select(heure, système, t, v, a) %>%
+  filter(!is.na(v)) %>%
   # convertir l'heure et le système en facteur
   mutate(heure = factor(heure),
          système = factor(système),
-         a = factor(a))
+         a = factor(a),
+         t = factor(t))
 
 # relation entre l'hauteur de l'entaille et le niveau de vide ------------------
 # la variable vide_ligne exclut les données quand la température extérieure 
 # était en bas de -2°C.
-mod_vide <- brms::brm(brms::bf(vide_ligne ~ 
-                                h +             # hauteur de l'entaille
-                                (1 | système / a / heure)),   # différence entre les systèmes, années et heure
+mod_vide <- brms::brm(brms::bf(v ~ 
+                                (1 | a / t / heure)),   # différence entre les systèmes, années et heure
                      data = d_vide,
                      family = gaussian(), 
-                     prior = c(set_prior('normal(0, 2)', class = 'Intercept'),
-                               set_prior('exponential(1)', class = 'sigma'),
-                               set_prior('normal(0, 2)', class = 'b')),
+                     prior = c(set_prior('normal(27, 3)', class = 'Intercept'),
+                               set_prior('exponential(1)', class = 'sigma')),
+                               #set_prior('normal(0, 2)', class = 'b')),
                      cores = 4, chains = 4,
                      control = list(max_treedepth = 11),
-                     warmup = 2000,
-                     iter = 6000,
+                     #warmup = 2000,
+                     iter = 2000,
                      seed = 1353)
 
 # vérifier la distribution postérieur ------------------------------------------
@@ -536,11 +485,9 @@ pp_check(mod_vide, type = 'scatter_avg', ndraws = 100)
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_vide)
 ranef(mod_vide)$système [, , 'Intercept']
+ranef(mod_vide1)$a [, , 'Intercept']
+ranef(mod_vide)$`a:t` [, , 'Intercept']
 ranef(mod_vide)$heure [, , 'Intercept']
 
-# Si on n'utilise pas l'heure le vide est très similaires entres les systèmes, 
-# mais le vide est clairement plus grand, le plus qu'on est haut (beta = -0.24 [-0.25; -0.24]).  
-# Pourtant, le modèle n'est pas bien convergé.
-
-# Si on n'utilise pas le système le modèle converge mieux et l'effet de l'
-# hauteur relative de l'entaille est similaire (beta = -0.20 [-0.20; -0.19]). 
+# La différence entre les traitements ne semble pas être signifiant. Il y a des 
+# petites tendances, mais aucune différence importante.
