@@ -5,11 +5,6 @@ if (!existsFunction("%>%")) library("tidyverse")
 if (!existsFunction("spread_draws")) library("tidybayes")
 if (!existsFunction("panel_border")) library("cowplot")
 
-# TR - To-do
-# Need to revisit all figures and make sure that they are displaying in the real
-# order, that the labels are correct, and that they have a mean line to help 
-# decipher effects.
-
 # Lire les données -------------------------------------------------------------
 if (!exists('d')) source('01_lire_données.R')
 
@@ -17,7 +12,6 @@ if (!exists('d')) source('01_lire_données.R')
 atp_se   <- 5      # Hygiena SureSystem II 5% ou 5 RLUs
 ph_se    <- 0.01   # Extech ExStick 
 brix1_se <- 0.2    # Atago Pal-Maple (0-85%)
-
 
 # Rendement par hauteur et système ---------------------------------------------
 par(mar = c(5, 5, 1, 2), mfrow = c(2, 1))
@@ -112,7 +106,7 @@ summary(mod_vol)$fixed
 # ------------------------------------------------------------------------------
 # La tendance est petit et n'est pas très clair. Pourtant, chaque centimetres,
 # entaille et coulée ont un effet, donc il y a un effet cumulatif plus 
-# important. En résumé, l'effet est de 0.0004096516 L [-0.00018; 0.00102] par 
+# important. En résumé, l'effet est de 0.0004376034 L [-0.00016; 0.00112] par 
 # entaille par coulée par cm est non-négligable. Par exemple, pour une saison de
 # 15 coulées et des entailles, qui sont 50 cm plus haut donne 0.3 L plus de sève 
 # par entaille. 
@@ -122,7 +116,7 @@ summary(mod_vol)$fixed
 mod_vol_SN <- brms::brm(brms::bf(rendement ~ 
                                 h +                     # effet de l'hauteur de l'entaille 
                                 (1 | année / date) +    # différence entre année et date
-                                (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                                (1 | systeme / ligne)), # différence entre systèmes et ligne
                      data = d %>% filter(site == "SN" & rendement > 0),
                      family = lognormal(), 
                      prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
@@ -165,8 +159,8 @@ summary(mod_vol_SN)$fixed
 # seulement h) -----------------------------------------------------------------
 mod_vol_SN23 <- brms::brm(brms::bf(rendement ~ 
                                    h +                     # effet de l'hauteur de l'entaille 
-                                   (1 | date) +    # différence entre année et date
-                                   (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                                   (1 | date) +            # différence entre année et date
+                                   (1 | systeme / ligne)), # différence entre systèmes et ligne
                         data = d %>% filter(site == "SN" & rendement > 0 & 
                                               année == 2023),
                         family = lognormal(), 
@@ -203,14 +197,15 @@ summary(mod_vol_SN23)$fixed
 # Notes (modèle Saint-Norbert seulement h) -------------------------------------
 # L'effet est beaucoup plus fort en 2023 à Saint-Norbert avec 0.001647183 
 # [0.00019; 0.00307]. Donc, il y aurait 1.24 L de sève de plus par entaille 
-# dans une saison avec 15 évènements de coulée.
+# pour des entaille à 50 cm plus haut dans une saison avec 15 évènements de 
+# coulée.
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert pour 2024 
 # seulement h) -----------------------------------------------------------------
 mod_vol_SN24 <- brms::brm(brms::bf(rendement ~ 
                                      h +                     # effet de l'hauteur de l'entaille 
-                                     (1 | date) +    # différence entre année et date
-                                     (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                                     (1 | date) +            # différence entre année et date
+                                     (1 | systeme / ligne)), # différence entre systèmes et ligne
                           data = d %>% filter(site == "SN" & rendement > 0 & 
                                                 année == 2024),
                           family = lognormal(), 
@@ -292,7 +287,7 @@ summary(mod_vol_CE)$fixed
 # 0.0002402153 L par coulée par entaille [-0.0019; 0.0015].
 
 # L'effet de l'hauteur de l'entaille sur le rendement (modèle complet) t -------
-mod_vol2 <- brms::brm(brms::bf(rendement ~ 
+mod_vol2_t <- brms::brm(brms::bf(rendement ~ 
                                 (1 | t) +                   # effet du traitement 
                                 (1 | site / année / date) + # différence entre année et date
                                 (1 | systeme / ligne)),     # différence entre systèmes et ligne
@@ -354,11 +349,11 @@ mod_vol2 %>% spread_draws(b_Intercept, r_t[t, ]) %>%
                                 "h1" = "#333333", "h1.5" = "#333333", 
                                 "h2" = "#333333", "h3" = "#333333")) +
   theme(legend.position = "none") +
-  geom_vline(xintercept = intercept[1, 1], 
+  geom_vline(xintercept = exp(intercept[1, 1]), 
              color = "darkgrey", linetype = "dashed", size = 1)
 
 # Regarder le sommaire et les coéfficients -------------------------------------
-summary(mod_vol2)
+summary(mod_vol2)$fixed
 ranef(mod_vol2)$t[, ,"Intercept"]
 ranef(mod_vol2)$site[, ,"Intercept"]
 ranef(mod_vol2)$`site:année`[, , 'Intercept']
@@ -368,19 +363,24 @@ ranef(mod_vol2)$`systeme:ligne`[, , "Intercept"]
 # Notes (modèle complet t) -----------------------------------------------------
 # Aucuns des effets catégorique est clairement positifs ou négatifs dans un 
 # modèle global, mais surtout les extrême ont plus (24" en haut) et moins (24" 
-# en bas) de volume.
+# en bas) de volume. Le résultats ne change pas si j'utilise un effet 
+# catégorique structurelle "t" plutôt que (des intercepts (1 | t).
 
 # comparer modèle mod_vol1 et mod_vol2 -----------------------------------------
 loo_vol1 <- loo(mod_vol)
 loo_vol2 <- loo(mod_vol2)
-loo_compare(loo_vol1, loo_vol2)
+loo_compare(loo_vol1, loo_vol2, loo_vol3, loo_vol4)
+# Le deuxième modèle avec un facteur catégorique décrit mieux les données. Ceci 
+# est aussi vrai quand on inclut un modèle avec un effet structurelle 
+# catégorique "t" et on change le à priori pour l'intercept à 2. Donc, ce 
+# résultat semble robuste.
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert seulement 
 # t) ---------------------------------------------------------------------------
 mod_vol2_SN <- brms::brm(brms::bf(rendement ~ 
-                                   (1 | t) +                     # effet du traitement
+                                   (1 | t) +               # effet du traitement
                                    (1 | année / date) +    # différence entre année et date
-                                   (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                                   (1 | systeme / ligne)), # différence entre systèmes et ligne
                         data = d %>% filter(site == "SN" & rendement > 0),
                         family = lognormal(), 
                         prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
@@ -404,7 +404,8 @@ pp_check(mod_vol2_SN, type = 'scatter_avg', ndraws = 100)
 # extraire les distributions postérieures --------------------------------------
 mod_vol2_SN %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
-  ggplot(aes(y = t, x = t_mean)) + 
+  ggplot(aes(y = factor(t, levels = c("b3", "b2", "b1", "h1", "h2", "h3")), 
+             x = t_mean)) + 
   scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
                      limits = c(0, 2.5)) +
   scale_y_discrete(name ="Hauteur relative au latéral", 
@@ -449,7 +450,8 @@ pp_check(mod_vol23_SN, type = 'scatter_avg', ndraws = 100)
 # extraire les distributions postérieures --------------------------------------
 mod_vol23_SN %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
-  ggplot(aes(y = t, x = t_mean)) + 
+  ggplot(aes(y = factor(t, levels = c("b3", "b1", "h1", "h3")), 
+             x = t_mean)) + 
   scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
                      limits = c(0, 2)) +
   scale_y_discrete(name ="Hauteur relative au latéral", 
@@ -463,14 +465,15 @@ ranef(mod_vol23_SN)$date[, , 'Intercept']
 ranef(mod_vol23_SN)$systeme [, , 'Intercept']
 ranef(mod_vol23_SN)$`systeme:ligne`[, , "Intercept"]
 # Notes : Tendance de plus de rendement plus haut avec l'exception de -24" en 
-# bas, mais la tendance est subtile.
+# bas, mais la tendance est subtile. Il ne semble pas avoir de différence entre 
+# la ligne de 4" et de -4".
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Saint-Norbert seulement 
 # t en 2024) -------------------------------------------------------------------
 mod_vol24_SN <- brms::brm(brms::bf(rendement ~ 
-                                     (1 | t) +                     # effet du traitement
-                                     (1 | date) +    # différence entre année et date
-                                     (1 | systeme / ligne)),# + # différence entre systèmes et ligne
+                                     (1 | t) +                # effet du traitement
+                                     (1 | date) +             # différence entre année et date
+                                     (1 | systeme / ligne)),  # différence entre systèmes et ligne
                           data = d %>% filter(site == "SN" & rendement > 0 & année == 2024),
                           family = lognormal(), 
                           prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
@@ -493,7 +496,8 @@ pp_check(mod_vol24_SN, type = 'scatter_avg', ndraws = 100)
 # extraire les distributions postérieures --------------------------------------
 mod_vol24_SN %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
   mutate(t_mean = b_Intercept + r_t) %>%
-  ggplot(aes(y = t, x = t_mean)) + 
+  ggplot(aes(y = factor (t, levels = c("b3", "b2", "h2", "h3")), 
+             x = t_mean)) + 
   scale_x_continuous(name ="Rendement en sève par entaille par coulée (litres)", 
                      limits = c(0, 2)) +
   scale_y_discrete(name ="Hauteur relative au latéral", 
@@ -506,14 +510,14 @@ ranef(mod_vol24_SN)$t [, , 'Intercept']
 ranef(mod_vol24_SN)$date[, , 'Intercept']
 ranef(mod_vol24_SN)$systeme [, , 'Intercept']
 ranef(mod_vol24_SN)$`systeme:ligne`[, , "Intercept"]
-# Notes : Pas de tendance clair.
+# Notes : Pas de tendance clair. -12" a le plus gros rendements.
 
 # L'effet de l'hauteur de l'entaille sur le rendement (Club de l'Est seulement 
 # t) ---------------------------------------------------------------------------
 mod_vol2_CE <- brms::brm(brms::bf(rendement ~ 
                                    (1 | t) +            # effet du traitement
                                    (1 | année / date) + # différence entre année et date
-                                   (1 | ligne)),# + # différence entre systèmes et ligne
+                                   (1 | ligne)),        # différence entre systèmes et ligne
                         data = d %>% filter(site == "CE" & rendement > 0),
                         family = lognormal(), 
                         prior = c(set_prior('normal(3, 10)', class = 'Intercept'),
@@ -550,7 +554,8 @@ ranef(mod_vol2_CE)$t [, , 'Intercept']
 ranef(mod_vol2_CE)$année [, , 'Intercept']
 ranef(mod_vol2_CE)$`année:date`[, , 'Intercept']
 ranef(mod_vol2_CE)$ligne[, , "Intercept"]
-# Notes : Vraiment pas d'effet claire.
+# Notes : Vraiment pas d'effet claire. La moyenne est peu différent et il y a 
+# une large marge d'erreur.
 
 # teneur en sucre par hauteur et système ---------------------------------------
 par(mar = c(5, 5, 1, 2), mfrow = c (2, 1))
@@ -599,13 +604,14 @@ for (i in 1:dim(info)[1]){
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre (seulement disponible 
 # pour St-Norbert-d'Arthabaska) ------------------------------------------------
-mod_brix1 <- brms::brm(brms::bf(brix ~ 
+mod_brix1 <- brms::brm(brms::bf(brix ~ # | mi(brix1_se) ~ 
                              (1 | t) +               # hauteur de l'entaille  (t pour catégorique et h pour gradient)
                              (1 | année / date) +    # différence entre année et date
                              (1 | systeme / ligne)), # difference entre systèmes et lignes
-                       data = d %>% #add_column(brix1_se = brix1_se) %>% 
+                       data = d %>%# add_column(brix1_se = brix1_se) %>% 
                          filter(site == "SN") %>%
-                         select(-rendement, -datetime, -site, -h),
+                         select(-rendement, -datetime, -site, -h) %>%
+                         filter(!is.na(brix)),
                        family = gaussian(), 
                        prior = c(set_prior('normal(2, 5)', class = 'Intercept'),
                                  set_prior('exponential(1)', class = 'sigma')),
@@ -623,9 +629,11 @@ pp_check(mod_brix1, ndraws = 100)
 pp_check(mod_brix1, type = 'error_hist',  ndraws = 10)
 pp_check(mod_brix1, type = 'scatter_avg', ndraws = 100)
 # erreur de la distribution postérieur semble être distribuée normalement
+# TR - Le modèle a de la misère de converger. Je dois encore jouer un peu avec les 
+# paramètres "à prior" pour voir si les résultats sont rigoureux.
 
 # extract intercept ------------------------------------------------------------
-intercept <- posterior_summary(mod_brix1, variable = "b_Intercept")
+intercept <- posterior_summary(mod_brix1_se, variable = "b_Intercept")
 
 # effet de l'hauteur relative de l'entaille ---------------------------––-------
 mod_brix1 %>% spread_draws(b_Intercept, r_t[t, ]) %>% 
@@ -668,13 +676,16 @@ ranef(mod_brix1)$`systeme:ligne`[, , "Intercept"]
 # négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
 # qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
 # 2023). 
+# Inclure la précision de la mesure cause des problèmes de convergence, mais le 
+# résultats est qualitativement le même. Pourtant, l'effet entre la hauteur la 
+# plus haute et la plus basse est un peu plus large. 
 
 # effet de l'hauteur de l'entaille sur le teneur en sucre ----------------------
-mod_brix2 <- brms::brm(brms::bf(brix ~ 
+mod_brix2 <- brms::brm(brms::bf(brix ~ #| mi(brix2_se) ~ 
                                  h +                     # hauteur de l'entaille 
                                  (1 | année / date) +    # différence par date
                                  (1 | systeme / ligne)), # difference antre systèmes
-                       data = d %>% #add_column(brix1_se = brix1_se) %>% 
+                       data = d %>% #add_column(brix2_se = brix1_se) %>% 
                          filter(site == "SN") %>%
                          select(-rendement, -datetime, -site, -t),,
                        family = gaussian(), 
@@ -707,6 +718,8 @@ plot(conditional_effects(mod_brix2)) [[1]] +
 # négliger. Ceci est en concordance avec des résultats antérieur qui ont montré 
 # qu'il y a une relation entre hauteur sur le tronc et brix (Rademacher et al., 
 # 2023). 
+# Le résultats est qualitativement le même si on inclut l'erreur de mesure, mais 
+# le modèle a des problèmes de convergence. 
 
 # regarder le sommaire et les coéfficients -------------------------------------
 summary(mod_brix2)

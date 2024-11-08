@@ -7,7 +7,7 @@ if(!existsFunction('read_excel')) library('readxl')
 if(!existsFunction('%>%')) library('tidyverse')
 
 # Clé pour les traitements -----------------------------------------------------
-# il avait quatre hauteurs différentes dans les traitements en 2023 et 2024:
+# Il avait quatre hauteurs différentes dans les traitements en 2023 et 2024:
 
 # 2023 
 #-------------------------------------------------------------------------------
@@ -41,14 +41,11 @@ ligne <- c("AC", "AT", "BC", "BT", "CC", "CT", "EC", "E1", "E2", "E3")
 #    b3        -60.96       mauve très foncé    "#c2a5cf"       25
 
 # initialiser les noms des fichiers --------------------------------------------
-nom_fichier_SN_2023 <- "../données/Compilation donnée érablière - 2023.xlsm"
-nom_fichier_SN_2024 <- "../données/Compilation donnée érablière - 2024.xlsm"
-nom_fichier_CE_2022 <- "../données/Projet_chalumeau_2022.xlsx"
-nom_fichier_CE_2023 <- "../données/Projet_chalumeau_2023.xlsx"
+nom_fichier_donnée <- "../données/Données_projet_hauteur_entaillage.xlsx"
 
 # extraire les metadonnées -----------------------------------------------------
-info_SN1 <- readxl::read_excel(path = nom_fichier_SN_2023,
-                               sheet = "Paramètres", range = "B19:K19",
+info_SN1 <- readxl::read_excel(path = nom_fichier_donnée,
+                               sheet = "Metadonnées", range = "B19:K19",
                                col_types = c(rep("numeric", 10)),
                                col_names = FALSE) %>% 
   pivot_longer(cols = 1:10, values_to = "n_arbres") %>%
@@ -59,7 +56,7 @@ info_SN1 <- readxl::read_excel(path = nom_fichier_SN_2023,
                         "#00441b", "#a6dba0", "#00441b", "#40004b", "#c2a5cf"),
              sym = c(24, 25, 5, 25, 24, 1, 24, 1, 5, 25)) %>%
   mutate(année = 2023)
-info_SN2 <- readxl::read_excel(path = nom_fichier_SN_2024,
+info_SN2 <- readxl::read_excel(path = nom_fichier_donnée,
                                sheet = "Paramètres", range = "B19:K19",
                                col_types = c(rep("numeric", 10)),
                                col_names = FALSE) %>% 
@@ -83,8 +80,9 @@ noms_col_SN <- c(
 types_col_SN <- c('date', 'text', rep('numeric', 17), 'text', rep('numeric', 6))
 
 # lire les données du système A contrôle de 2023 (h3; 24" au dessus) -----------
-A_h3_2023 <- readxl::read_excel(path = nom_fichier_SN_2023,
-                                sheet = '(1)', skip = 4, na = '-', n_max = 28,
+A_h3_2023 <- readxl::read_excel(path = nom_fichier_donnée,
+                                sheet = 'vol_Saint_Norbert_2023', 
+                                skip = 2, na = '-', n_max = 28,
                                 col_types = types_col_SN, 
                                 col_names = noms_col_SN) %>%
   mutate(date = as_date(date),
@@ -345,25 +343,24 @@ d <- d %>% mutate(t = factor(t, ordered = TRUE,
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
 # initialiser les noms des colonnes --------------------------------------------
-noms_col_CE <- c('date', 'comp1.1', 'récolte1.1', 'rendement1.1', 'rien1',
-                         'comp1.2', 'récolte1.2', 'rendement1.2', 'var1', 
-                         'comp2.1', 'récolte2.1', 'rendement2.1', 'rien2',
-                         'comp2.2', 'récolte2.2', 'rendement2.2', 'var2',
-                         'comp3.1', 'récolte3.1', 'rendement3.1', 'rien3',
-                         'comp3.2', 'récolte3.2', 'rendement3.2', 'var3')
+noms_col_CE <- c('date', 'comp1.1', 'récolte1.1', 'rendement1.1',
+                         'comp1.2', 'récolte1.2', 'rendement1.2', 
+                         'comp2.1', 'récolte2.1', 'rendement2.1',
+                         'comp2.2', 'récolte2.2', 'rendement2.2',
+                         'comp3.1', 'récolte3.1', 'rendement3.1',
+                         'comp3.2', 'récolte3.2', 'rendement3.2')
 
 # lire les données de 2022 du CE (au-dessus de latéral) ------------------------
-F1_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
-                                 sheet = 'Prise de données', range = 'B14:Z52',
-                                 col_types = c('date', rep('numeric', 24)),
+F1_h1_2022 <- readxl::read_excel(path = nom_fichier_donnée,
+                                 sheet = 'vol_Lejeune_2022', range = 'A3:S41',
+                                 col_types = c('date', rep('numeric', 18)),
                                  col_names = noms_col_CE) %>% 
   select(date, rendement1.1, rendement1.2) %>% 
   filter(!is.na(rendement1.1) | !is.na(rendement1.2)) %>% 
-  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), # TR - Midi ? À vérifier avec Andréanne
+  mutate(datetime = ymd_hms(paste(date, " 12:00:00")), 
          date = as_date(date),
          t = factor("h1.5"),
          h = 22.86, # Entre 6 et 12", donc j'utilise la moyenne de 9" ou 22.86 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2022"),
          systeme = factor("F"),
          ligne = factor("F1"),
@@ -373,9 +370,9 @@ F1_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
 # lire les données de 2023 du CE (en dessus de latéral) ------------------------
-F1_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
-                                 sheet = 'Prise de données', range = 'B14:Z44',
-                                 col_types = c('date', rep('numeric', 24)),
+F1_b1_2023 <- readxl::read_excel(path = nom_fichier_donnée,
+                                 sheet = 'vol_Lejeune_2023', range = 'A3:S33',
+                                 col_types = c('date', rep('numeric', 18)),
                                  col_names = noms_col_CE) %>% 
   select(date, rendement1.1, rendement1.2) %>% 
   filter(!is.na(rendement1.1) | !is.na(rendement1.2)) %>% 
@@ -383,7 +380,6 @@ F1_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
          date = as_date(date),
          t = factor("b1.5"),
          h = -22.86, # Entre 6 et 12", donc j'utilise la moyenne de -9" ou -22.86 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
          année = factor('2023'),
          systeme = factor('F'),
          ligne = factor('F1'),
@@ -392,10 +388,10 @@ F1_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
   select(-c(rendement1.1, rendement1.2)) %>% add_column(brix = NA) %>% 
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
-# lire les données de 2022 du CE (au dessous de latéral) -----------------------
-F2_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
-                                 sheet = 'Prise de données', range = 'B14:Z52',
-                                 col_types = c('date', rep('numeric', 24)),
+# lire les données de 2022 du CE (au dessus du latéral) -----------------------
+F2_h1_2022 <- readxl::read_excel(path = nom_fichier_donnée,
+                                 sheet = 'vol_Lejeune_2022', range = 'A3:S41',
+                                 col_types = c('date', rep('numeric', 18)),
                                  col_names = noms_col_CE) %>% 
   select(date, rendement2.1, rendement2.2) %>% 
   filter(!is.na(rendement2.1) | !is.na(rendement2.2)) %>% 
@@ -403,7 +399,6 @@ F2_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
          date = as_date(date),
          t = factor("h1.5"),
          h = 22.86, # Entre 6 et 12", donc j'utilise la moyenne de 9" ou 22.86 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2022"),
          systeme = factor("F"),
          ligne = factor("F2"),
@@ -413,9 +408,9 @@ F2_h1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
   relocate(année, site, systeme, t, h, date, datetime, rendement, brix)
 
 # lire les données de 2023 du CE (au dessous de latéral) -----------------------
-F2_h1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
-                                 sheet = 'Prise de données', range = 'B14:Z44',
-                                 col_types = c('date', rep('numeric', 24)),
+F2_h1_2023 <- readxl::read_excel(path = nom_fichier_donnée,
+                                 sheet = 'vol_Lejeune_2023', range = 'A3:S33',
+                                 col_types = c('date', rep('numeric', 18)),
                                  col_names = noms_col_CE) %>% 
   select(date, rendement2.1, rendement2.2) %>% 
   filter(!is.na(rendement2.1) | !is.na(rendement2.2)) %>% 
@@ -423,7 +418,6 @@ F2_h1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
          date = as_date(date),
          t = factor("h1.5"),
          h = 22.86,  # Entre 6 et 12", donc j'utilise la moyenne de 9" ou 22.86 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2023"),
          systeme = factor('F'),
          ligne = factor("F2"),
@@ -433,9 +427,9 @@ F2_h1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
   relocate(année, site, systeme, ligne, t, h, date, datetime, rendement, brix)
 
 # lire les données de 2022 du CE (en-dessous de latéral) -----------------------
-F3_b1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
-                                 sheet = 'Prise de données', range = 'B14:Z52',
-                                 col_types = c('date', rep('numeric', 24)),
+F3_b1_2022 <- readxl::read_excel(path = nom_fichier_donnée,
+                                 sheet = 'vol_Lejeune_2022', range = 'A3:S41',
+                                 col_types = c('date', rep('numeric', 18)),
                                  col_names = noms_col_CE) %>% 
   select(date, rendement3.1, rendement3.2) %>% 
   filter(!is.na(rendement3.1) | !is.na(rendement3.2)) %>% 
@@ -443,7 +437,6 @@ F3_b1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
          date = as_date(date),
          t = factor("b1.5"),
          h = -22.86, # Entre 6 et 12", donc j'utilise la moyenne de 9" ou -22.86 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2022"),
          systeme = factor("F"),
          ligne = factor("F3"),
@@ -453,9 +446,9 @@ F3_b1_2022 <- readxl::read_excel(path = nom_fichier_CE_2022,
   relocate(année, site, systeme, t, h, date, datetime, rendement, brix)
 
 # lire les données de 2023 du CE (en-dessous de latéral) -----------------------
-F3_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
-                                 sheet = 'Prise de données', range = 'B14:Z44',
-                                 col_types = c('date', rep('numeric', 24)),
+F3_b1_2023 <- readxl::read_excel(path = nom_fichier_donnée,
+                                 sheet = 'vol_Lejeune_2023', range = 'A3:S33',
+                                 col_types = c('date', rep('numeric', 18)),
                                  col_names = noms_col_CE) %>% 
   select(date, rendement3.1, rendement3.2) %>% 
   filter(!is.na(rendement3.1) | !is.na(rendement3.2)) %>% 
@@ -463,7 +456,6 @@ F3_b1_2023 <- readxl::read_excel(path = nom_fichier_CE_2023,
          date = as_date(date),
          t = factor("b1.5"),
          h = -22.86,  # Entre 6 et 12", donc j'utilise la moyenne de 9" ou -22.86 cm
-         # TR - Je devrais inclure une erreur dans l'analyse
          année = factor("2023"),
          systeme = factor('F'),
          ligne = factor("F3"),
